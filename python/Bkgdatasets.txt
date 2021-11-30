@@ -1,0 +1,8 @@
+/cmshome/ratramon/Analysis/data/HNLFlatTuples/Pt-20to30/HNLFlat_*.root 64.5889 QCD_MuEnriched_15To300 
+/cmshome/ratramon/Analysis/data/HNLFlatTuples/Pt-30to50/HNLFlat_*.root 35.5222 QCD_MuEnriched_15To300 
+/cmshome/ratramon/Analysis/data/HNLFlatTuples/Pt-50to80/HNLFlat_*.root 14.0434 QCD_MuEnriched_15To300 
+/cmshome/ratramon/Analysis/data/HNLFlatTuples/Pt-80to120/HNLFlat_*.root 2.6714 QCD_MuEnriched_15To300 
+/cmshome/ratramon/Analysis/data/HNLFlatTuples/Pt-80to120_ext/HNLFlat_*.root 2.6714 QCD_MuEnriched_15To300 
+/cmshome/ratramon/Analysis/data/HNLFlatTuples/Pt-120to170/HNLFlat_*.root 0.797302 QCD_MuEnriched_15To300 
+/cmshome/ratramon/Analysis/data/HNLFlatTuples/Pt-120to170_ext/HNLFlat_*.root 0.797302 QCD_MuEnriched_15To300 
+/cmshome/ratramon/Analysis/data/HNLFlatTuples/Pt-170to300/HNLFlat_*.root 0.151216 QCD_MuEnriched_15To300 
