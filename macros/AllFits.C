@@ -42,15 +42,13 @@
 
 
 
-int fit(std::string filename, double mass, int type,std::string lxy,int lxyBin, std::string wd, double* sigF,std::string sel){
+int fit(std::string filename, double mass,double ctau, int type,std::string lxy,int lxyBin, std::string wd, double* sigF,std::string sel){
 
 //	TFile* in = TFile::Open(filename.c_str());
+
 	TChain* c= new TChain("Events");
-
+        bool doOnlyHistos= false;
 	c->Add(filename.c_str());
-
-
-
 	RooWorkspace wspace("w");
 	gStyle->SetOptFit(0000);
 	gROOT->SetBatch(true);
@@ -73,18 +71,21 @@ int fit(std::string filename, double mass, int type,std::string lxy,int lxyBin, 
 	wspace.factory("r_mu[0.641,0.641,0.641]");
 	if (type ==0 )wspace.factory("hnl_mass[3,0.7,5]");
 	else wspace.factory("hnl_mass[3,0.7,5]");
-	wspace.factory("B_mass[5.3,2,6]");
+	wspace.factory("B_mass[5.3,0,1000000]");
+	wspace.factory("hnl_charge[0,-2,2]");
 	wspace.factory("Type[0,0,4]");
 	wspace.factory("LxyBin[0,0,4]");
-	wspace.factory("dr_trgmu_hnl[0,-3,3]");
-	wspace.factory("dilepton_mass[0,0,7]");
-	wspace.factory("dilepton_pt[0,0,100]");
+	wspace.factory("dr_trgmu_hnl[0,-100,100]");
+	wspace.factory("dilepton_mass[0,0,1000000]");
+	wspace.factory("dilepton_pt[0,0,10000000]");
 	wspace.factory("hnl_vtxProb[0,0,1]");
-	wspace.factory("hnl_pi_dxyS[0,-100,100]");
-	wspace.factory("hnl_l_dxyS[0,-100,100]");
-	wspace.factory("hnl_l_pt[10,0,100]");
-	wspace.factory("hnl_pi_pt[10,0,100]");
-	wspace.factory("hnl_lxy[10,0,200]");
+	wspace.factory("hnl_pi_dxyS[0,-100000000,10000000]");
+	wspace.factory("hnl_l_dxyS[0,-100000000,100000000]");
+	wspace.factory("hnl_l_pt[10,0,100000000]");
+	wspace.factory("hnl_l_mvaId[0,-2000,2000]");
+	wspace.factory("hnl_pi_pt[10,0,10000000]");
+	wspace.factory("hnl_lxy_sig[10,-10000000,10000000]");
+	wspace.factory("hnl_lxy[10,-100000000,10000000]");
 	wspace.factory("likelihood[0,-1,1]");
 	wspace.factory("LepQProd[0,-1,1]");
 	//wspace.factory(("Nele[10,7,"+std::to_string(hist->GetMaximum())+"]").c_str());
@@ -102,20 +103,27 @@ int fit(std::string filename, double mass, int type,std::string lxy,int lxyBin, 
 	wspace.var("n_cb");
 	wspace.var("alpha_cb");
 	wspace.var("hnl_mass");
+	wspace.var("hnl_charge");
+	wspace.var("hnl_lxy_sig");
+	wspace.var("hnl_lxy");
 	wspace.var("hnl_trgmu_hnl");
 	wspace.var("dilepton_mass");
 	wspace.var("dilepton_pt");
 	wspace.var("hnl_vtxProb");
 	wspace.var("hnl_l_dxyS");
 	wspace.var("hnl_pi_dxyS");
+	wspace.var("hnl_l_pt");
+	wspace.var("hnl_pi_pt");
 	wspace.var("B_mass");
 	wspace.var("LepQProd");
 	wspace.var("Type");
 	wspace.var("LxyBin");
 	//wspace.var("r_mu")->setVal(1-wspace.var("r_ele")->getVal());
-	std::string variables = "B_mass,hnl_mass,Type,LxyBin,dr_trgmu_hnl,dilepton_mass,hnl_vtxProb,hnl_l_pt,hnl_pi_pt,dilepton_pt,likelihood,hnl_lxy,LepQProd";
+	std::string variables = "B_mass,hnl_mass,hnl_charge,hnl_lxy,Type,LxyBin,dr_trgmu_hnl,dilepton_mass,hnl_vtxProb,hnl_l_pt,hnl_l_mvaId,hnl_pi_pt,hnl_l_dxyS,hnl_pi_dxyS,dilepton_pt,likelihood,hnl_lxy_sig,LepQProd";
         wspace.defineSet("treeSet",variables.c_str());
 	//RooDataSet mcSet("mcSet","mcSet",*wspace.set("treeSet"),RooFit::Import(*c),RooFit::Cut(("Type=="+std::to_string(type)+" && LxyBin=="+std::to_string(lxyBin)+sel).c_str()));
+//	wspace.var("hnl_mass")->setMin(2.8);
+//	wspace.var("hnl_mass")->setMax(3.3);
 	RooDataSet mcSet("mcSet","mcSet",*wspace.set("treeSet"),RooFit::Import(*c),RooFit::Cut(("Type=="+std::to_string(type)+" && "+lxy +sel).c_str()));
 	std:: cout << ("Type=="+std::to_string(type)+" && "+lxy+sel).c_str() << " " << mcSet.sumEntries()<<std::endl;
 	if (mcSet.sumEntries()<10){
@@ -126,27 +134,35 @@ int fit(std::string filename, double mass, int type,std::string lxy,int lxyBin, 
 	return 0;
 	
 
-	}else{
-	wspace.var("hnl_mass")->setMin(mcSet.mean(*wspace.var("hnl_mass"))-4*mcSet.sigma(*wspace.var("hnl_mass")));
-	wspace.var("hnl_mass")->setMax(mcSet.mean(*wspace.var("hnl_mass"))+4*mcSet.sigma(*wspace.var("hnl_mass")));
 	}
+	if (doOnlyHistos){
+		
+		TH1D* hist = (TH1D*)mcSet.createHistogram(("sig_Mass"+std::to_string(int(mass))+"_ctau"+std::to_string(int(ctau))+"_lxy"+std::to_string(lxyBin)+"_"+channel[type]+"SS").c_str(),*wspace.var("hnl_mass"),RooFit::Binning(25,2.5,3.5));
+		hist->SaveAs((std::string(hist->GetName())+".root").c_str());
+		return 0;
+	}
+			/*else{
+//	wspace.var("hnl_mass")->setMin(mcSet.mean(*wspace.var("hnl_mass"))-2*std::min(mcSet.sigma(*wspace.var("hnl_mass")), 0.7));
+	}*/
 
 	wspace.factory(("Nsig[10,"+std::to_string(mcSet.sumEntries()*0.8)+","+std::to_string(mcSet.sumEntries()*1.5)+"]").c_str());
 	wspace.Print();
 	if (type==3){
 
-		wspace.factory(("mean_ele[3.00,"+std::to_string(mcSet.mean(*wspace.var("hnl_mass"))-3*mcSet.sigma(*wspace.var("hnl_mass")))+","+std::to_string(mcSet.mean(*wspace.var("hnl_mass"))+3*mcSet.sigma(*wspace.var("hnl_mass")))+"]").c_str());
+		wspace.var("hnl_mass")->setMin(mass-0.3);
+		wspace.var("hnl_mass")->setMax(mass+0.2);
+		wspace.factory(("mean_ele[3,"+std::to_string(mass-0.5*mcSet.sigma(*wspace.var("hnl_mass")))+","+std::to_string(mcSet.mean(*wspace.var("hnl_mass"))+0.5*mcSet.sigma(*wspace.var("hnl_mass")))+"]").c_str());
 		wspace.factory(("mean_mu[3.00,"+std::to_string(mcSet.mean(*wspace.var("hnl_mass"))-3*mcSet.sigma(*wspace.var("hnl_mass")))+","+std::to_string(mcSet.mean(*wspace.var("hnl_mass"))+3*mcSet.sigma(*wspace.var("hnl_mass")))+"]").c_str());
-		wspace.factory(("sigma_ele["+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.08)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.05)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.5)+"]").c_str());
+		wspace.factory(("sigma_ele["+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.07)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.03)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.5)+"]").c_str());
 		wspace.factory(("sigma_mu["+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.08)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.05)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.5)+"]").c_str());
-		wspace.factory("n1_cb[7,0,10]");
-		wspace.factory("alpha1_cb[3,0,10]");
-		wspace.factory("n2_cb[5,0,10]");
-		wspace.factory("alpha2_cb[-3,-10,0]");
+		wspace.factory("n1_cb[3,0,10]");
+		wspace.factory("alpha1_cb[3,0,100]");
+		wspace.factory("n2_cb[7,0,10]");
+		wspace.factory("alpha2_cb[-3,-100,0]");
 //		wspace.factory(("Nele["+std::to_string(SigEle[lxyBin])+","+std::to_string(SigEle[lxyBin]-sqrt(SigEle[lxyBin]))+","+std::to_string(SigEle[lxyBin]+sqrt(SigEle[lxyBin]))+"]").c_str());
 		wspace.factory("Nele[10,1,10000]");
-		wspace.factory("N1[10,1,1000000]");
-		wspace.factory("N2[10,1,1000000]");
+		wspace.factory("N1[100,0,1000000]");
+		wspace.factory("N2[100,0,1000000]");
 		wspace.factory(("Nmu["+std::to_string(SigMu[lxyBin])+","+std::to_string(SigMu[lxyBin]-sqrt(SigMu[lxyBin]))+","+std::to_string(SigMu[lxyBin]+sqrt(SigMu[lxyBin]))+"]").c_str());
 		wspace.factory("CBShape::CB1(hnl_mass,mean_ele,sigma_ele,alpha1_cb,n1_cb)");
 		wspace.factory("CBShape::CB2(hnl_mass,mean_ele,sigma_ele,alpha2_cb,n2_cb)");
@@ -159,17 +175,19 @@ int fit(std::string filename, double mass, int type,std::string lxy,int lxyBin, 
 	 if (type==1 || type==2){
 
 
-		wspace.factory(("mean_ele["+std::to_string(mcSet.mean(*wspace.var("hnl_mass")))+","+std::to_string(mcSet.mean(*wspace.var("hnl_mass"))-3*mcSet.sigma(*wspace.var("hnl_mass")))+","+std::to_string(mcSet.mean(*wspace.var("hnl_mass"))+3*mcSet.sigma(*wspace.var("hnl_mass")))+"]").c_str());
-		wspace.factory(("sigma_ele["+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.08)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.05)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.5)+"]").c_str());
+		wspace.var("hnl_mass")->setMin(mass-0.3);
+		wspace.var("hnl_mass")->setMax(mass+0.2);
+		wspace.factory(("mean_ele["+std::to_string(mcSet.mean(*wspace.var("hnl_mass")))+","+std::to_string(mcSet.mean(*wspace.var("hnl_mass"))-2*mcSet.sigma(*wspace.var("hnl_mass")))+","+std::to_string(mcSet.mean(*wspace.var("hnl_mass"))+2*mcSet.sigma(*wspace.var("hnl_mass")))+"]").c_str());
+		wspace.factory(("sigma_ele["+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.03)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.02)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.3)+"]").c_str());
 		wspace.factory(("sigma_mu[0,0,0]"));
-		wspace.factory("n1_cb[7,0,10]");
+		wspace.factory("n1_cb[7,0,12]");
 		wspace.factory("alpha1_cb[3,0,10]");
 		wspace.factory("n2_cb[5,0,10]");
 		wspace.factory("alpha2_cb[-3,-10,0]");
-		wspace.factory("n_cb[7,0,10]");
+		wspace.factory("n_cb[7,0,12]");
 		wspace.factory("alpha_cb[3,0,10]");
-		wspace.factory("N1[10,1,1000000]");
-		wspace.factory("N2[10,1,1000000]");
+		wspace.factory("N1[10,0,1000000]");
+		wspace.factory("N2[10,0,1000000]");
  		wspace.factory(("Nele["+std::to_string(mcSet.sumEntries()*1)+","+std::to_string(mcSet.sumEntries()*0.5)+","+std::to_string(mcSet.sumEntries()*1.5)+"]").c_str());
 		wspace.factory(("Nmu[0,0,0]"));
 		wspace.factory("CBShape::CB1(hnl_mass,mean_ele,sigma_ele,alpha1_cb,n1_cb)");
@@ -179,9 +197,11 @@ int fit(std::string filename, double mass, int type,std::string lxy,int lxyBin, 
 
 	}else if (type==0){
 
+		wspace.var("hnl_mass")->setMin(mcSet.mean(*wspace.var("hnl_mass"))-0.3);
+		wspace.var("hnl_mass")->setMax(mcSet.mean(*wspace.var("hnl_mass"))+1*mcSet.sigma(*wspace.var("hnl_mass")));
 
 		wspace.factory(("mean_ele["+std::to_string(mcSet.mean(*wspace.var("hnl_mass")))+","+std::to_string(mcSet.mean(*wspace.var("hnl_mass"))-3*mcSet.sigma(*wspace.var("hnl_mass")))+","+std::to_string(mcSet.mean(*wspace.var("hnl_mass"))+3*mcSet.sigma(*wspace.var("hnl_mass")))+"]").c_str());
-		wspace.factory(("sigma_ele["+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.08)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.05)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.5)+"]").c_str());
+		wspace.factory(("sigma_ele["+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.03)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.01)+","+std::to_string(mcSet.sigma(*wspace.var("hnl_mass"))*0.5)+"]").c_str());
 	//	wspace.factory(("sigma_ele[0,0,0]"));
 		wspace.factory("n1_cb[7,0,10]");
 		wspace.factory("alpha1_cb[3,0,10]");
@@ -202,16 +222,17 @@ int fit(std::string filename, double mass, int type,std::string lxy,int lxyBin, 
 	}
 
 	
-	wspace.factory("SUM::signal(N1*CB1,N1*CB2)");
+	wspace.factory("SUM::signal(N1*CB1,N2*CB2)");
 //	RooFFTConvPdf signal("signal","CB1 (X) CB2",*wspace.var("hnl_mass"),*wspace.pdf("CB1"),*wspace.pdf("CB2"));
 	
 //	if (type ==3 )wspace.factory("SUM::signal(Nele*CB1,Nmu*CB2)");
 	RooAbsPdf* signal = wspace.pdf("signal");
-	RooFitResult* res = signal->fitTo(mcSet,RooFit::Range(mcSet.mean(*wspace.var("hnl_mass"))-3*mcSet.sigma(*wspace.var("hnl_mass")),mcSet.mean(*wspace.var("hnl_mass"))+3*mcSet.sigma(*wspace.var("hnl_mass"))),RooFit::Save());
+//	RooFitResult* res = signal->fitTo(mcSet,RooFit::Range(mcSet.mean(*wspace.var("hnl_mass"))-1*mcSet.sigma(*wspace.var("hnl_mass")),mcSet.mean(*wspace.var("hnl_mass"))+1*mcSet.sigma(*wspace.var("hnl_mass"))),RooFit::Save());
+	RooFitResult* res = signal->fitTo(mcSet,RooFit::Range(mcSet.mean(*wspace.var("hnl_mass"))-2*mcSet.sigma(*wspace.var("hnl_mass")),mcSet.mean(*wspace.var("hnl_mass"))+2*mcSet.sigma(*wspace.var("hnl_mass"))),RooFit::Save());
 	TCanvas* c1 =new TCanvas("MC_Fit", "fit", 800, 1200);
 	RooPlot* mhnl_frame = wspace.var("hnl_mass")->frame();
 	mcSet.plotOn(mhnl_frame, RooFit::Name("template mc"));
-	signal->plotOn(mhnl_frame,RooFit::Name("signal"),RooFit::Range(mcSet.mean(*wspace.var("hnl_mass"))-3*mcSet.sigma(*wspace.var("hnl_mass")),mcSet.mean(*wspace.var("hnl_mass"))+3*mcSet.sigma(*wspace.var("hnl_mass"))),RooFit::LineColor(2),RooFit::MoveToBack()); // this will show fit overlay on canvas
+	signal->plotOn(mhnl_frame,RooFit::Name("signal"),RooFit::Range(mcSet.mean(*wspace.var("hnl_mass"))-2*mcSet.sigma(*wspace.var("hnl_mass")),mcSet.mean(*wspace.var("hnl_mass"))+2*mcSet.sigma(*wspace.var("hnl_mass"))),RooFit::LineColor(2),RooFit::MoveToBack()); // this will show fit overlay on canvas
 	mhnl_frame->GetYaxis()->SetTitleOffset(0.9);
 	mhnl_frame->GetYaxis()->SetTitleFont(42);
 	mhnl_frame->GetYaxis()->SetTitleSize(0.05);
@@ -236,7 +257,7 @@ int fit(std::string filename, double mass, int type,std::string lxy,int lxyBin, 
 	
 	RooAbsReal*  FullSpectrum = wspace.pdf("signal")->createIntegral(*wspace.var("hnl_mass"));
 	if (type==0)wspace.var("hnl_mass")->setRange("twoSigma",wspace.var("mean_ele")->getVal()-2*sigF[2],wspace.var("mean_ele")->getVal()+2*sigF[2]) ;
-	else wspace.var("hnl_mass")->setRange("twoSigma",wspace.var("mean_ele")->getVal()-3*sigF[2],wspace.var("mean_ele")->getVal()+2*sigF[2]) ;
+	else wspace.var("hnl_mass")->setRange("twoSigma",wspace.var("mean_ele")->getVal()-2*sigF[2],wspace.var("mean_ele")->getVal()+2*sigF[2]) ;
 	RooAbsReal*  yield = wspace.pdf("signal")->createIntegral(*wspace.var("hnl_mass"),RooFit::Range("twoSigma"));
 //	RooAbsReal*  yield1 = wspace.pdf("CB1")->createIntegral(*wspace.var("hnl_mass"),RooFit::Range("twoSigma"));
 //	RooAbsReal*  yield2 = wspace.pdf("CB2")->createIntegral(*wspace.var("hnl_mass"),RooFit::Range("twoSigma"));
@@ -249,6 +270,9 @@ int fit(std::string filename, double mass, int type,std::string lxy,int lxyBin, 
 
 	c1->SaveAs((wd+"/Fit_"+channel[type]+"_"+std::to_string(lxyBin)+".pdf").c_str());
 	std::cout << "type " << type << " lxyBin "<< lxyBin<< std::endl;
+//	std::ofstream SigFeatures;
+//	SigFeatures.open(wd+"/Signal_mass"+std::to_string((int)(mass))+"_ctau"+std::to_string((int)(ctau))+"_features.txt",ios_base::app );
+//	SigFeatures << i << " "  << j << " " << sigF[0] <<  " " << sigF[1] << " " << sigF[2] <<  std::endl;
 	return 0;
 }
 
@@ -278,31 +302,29 @@ int genEventCount(std::string filename){
 }
 
 
-int AllFits(std::string filename, double mass,double ctau, std::string wd,std::string sel ){
+int AllFits(std::string filename, double mass,double ctau,int channel, std::string wd,std::string sel ){
  
 
-	int i, j;
+	int  j;
 	double sigFeat[3];
-	std::string lxy_cuts[3]= {"hnl_lxy<1", "hnl_lxy>1 && hnl_lxy<5","hnl_lxy>5"};
+	//std::string lxy_cuts[4]= {"hnl_lxy<3", "hnl_lxy>3 && hnl_lxy<10", "hnl_lxy>10 && hnl_lxy<20","hnl_lxy>20"};
+	std::string lxy_cuts[4]= {"hnl_lxy<1", "hnl_lxy>1 && hnl_lxy<5", "hnl_lxy>5"};
 	std::ofstream SigFeatures;
 	
-	SigFeatures.open(wd+"/Signal_mass"+std::to_string((int)(mass))+"_ctau"+std::to_string((int)(ctau))+"_features.txt");
-	std::cout << genEventCount(filename) << std::endl;
-	for (i=0;i<4;i++){
+	SigFeatures.open(wd+"/Signal_Mass"+std::to_string((int)(mass))+"_ctau"+std::to_string((int)(ctau))+"_features.txt");
+	std::cout << wd+"/Signal_Mass"+std::to_string((int)(mass))+"_ctau"+std::to_string((int)(ctau))+"_features.txt" << std::endl;
 	
 
 		std::cout << "in cycle " << std::endl;
 		for (j=0;j<3;j++){
-		const int temp_i = i;
+		const int temp_i = channel;
 		const int temp_j=j;
-		fit(filename.c_str(),mass,i,lxy_cuts[j],j,wd+"/SigFits",sigFeat,sel);
-		i=temp_i;
+		fit(filename.c_str(),mass,ctau,channel,lxy_cuts[j],j,wd+"/SigFits",sigFeat,sel);
+		channel=temp_i;
 		j=temp_j;
-	 	SigFeatures << i << " "  << j << " " << sigFeat[0] <<  " " << sigFeat[1] << " " << sigFeat[2] <<  std::endl;
-		std::cout << "after print  " << i << " " << j << std::endl;
+	 	SigFeatures << channel << " "  << j << " " << sigFeat[0] <<  " " << sigFeat[1] << " " << sigFeat[2] <<  std::endl;
 		}
 
-	}
 	SigFeatures.close();
 
 	return 0;
