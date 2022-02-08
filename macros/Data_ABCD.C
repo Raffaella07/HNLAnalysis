@@ -270,8 +270,8 @@ void AddQCDToHist(int SetIdx,double QCDweight,TChain* tree, std::string filter, 
 	}else{
 			TH1D * temp;
 			//std::cout << "mass " << mass << " sigma " << sigma << std::endl;
-			if(window) temp = new TH1D("temp","temp",8,mass-NsigmaDown*sigma,mass+NsigmaUp*sigma);
-			else temp = new TH1D("temp","temp",8,2,5);
+			if(window) temp = new TH1D("temp","temp",1,mass-NsigmaDown*sigma,mass+NsigmaUp*sigma);
+			else temp = new TH1D("temp","temp",25,2.5,3.5);
 			tree->Draw((leaf+">>"+std::string(temp->GetName())).c_str(),filter.c_str());
 		//	d.Filter(filter.c_str()).Histo1D(h_model,leaf.c_str()).GetValue().Copy(*temp);
 			temp->Scale(QCDweight*lumi);		
@@ -283,9 +283,10 @@ void AddQCDToHist(int SetIdx,double QCDweight,TChain* tree, std::string filter, 
 
 		}
 }
-int Data_ABCD(std::string path,int SameSign, bool SuperQCD,bool MassWindow,double mass,double ctau,std::string wd, std::string selection){
+int Data_ABCD(std::string path,int SameSign, bool SuperQCD,bool MassWindow,double mass,double ctau,int channel,std::string wd, std::string selection, bool unblinded){
 
 	gROOT->SetBatch(kTRUE);	
+	std::cout << wd+"/BkgYields_.txt"<< std::endl;
 	const int nDataset = 9;
 	const int LxyBin = 4;
 	const int Channels = 4;
@@ -295,26 +296,28 @@ int Data_ABCD(std::string path,int SameSign, bool SuperQCD,bool MassWindow,doubl
 	double BMassLowLimit = 4.5;
 	std::string ChannelLable[Channels]= {"Muon","PF","LowPt","Track"};
 	std::string cutX = "(hnl_vtxProb >0.05)";
-	std::string cutY = "(hnl_cos2D >0.993)";
+	std::string cutY = "(hnl_cos2D >0.996)";
 	std::string RegCut[ABCD];
-	std::string RegLable[ABCD] = {"AMock","B","C","D"};
+	std::string RegLable[ABCD] = {"AMock","B","C","D","TF"};
 	
 	RegCut[0] = cutX + " && " + cutY; //A
 	RegCut[1] = cutX + " && !" + cutY; //B
 	RegCut[2] = "!"+cutX + " && !" + cutY; //C
 	RegCut[3] = "!"+cutX + " && " + cutY; //D
-	RegCut[4] = " "; //Global TF on A 
+	RegCut[4] = "hnl_charge==0"; //Global TF on A 
 	RegCut[5] = " "; // recomputed A 
 	//ROOT::RDF::TH1DModel *  h_models[2];
 //	const int nRegion,nChannel, nLxyBin;
-const int nRegion = 4; //B,C,D with A blinded and mocked
-const int nChannel = 4;
-const int nLxyBin = 3;
-	std::string lxy_cuts[4]= {"hnl_lxy<1", "hnl_lxy>1 && hnl_lxy<5", "hnl_lxy>5"};
+	const int nRegion = 5; //B,C,D with A blinded and mocked
+	const int nChannel = 4;
+	const int nLxyBin = 3;
+//	std::string lxy_cuts[4]= {"hnl_lxy<3", "hnl_lxy>3 && hnl_lxy<10", " hnl_lxy<20 && hnl_lxy>10","hnl_lxy>20"};
+
+	std::string lxy_cuts[3]= {"hnl_lxy<1", "hnl_lxy>1 && hnl_lxy<5", "hnl_lxy>5"};
 	double sigma[nChannel][nLxyBin];
 	std::ifstream sigFeatures;
-	sigFeatures.open((wd+"/Signal_mass"+std::to_string((int)(mass))+"_ctau"+std::to_string((int)(ctau))+"_features.txt").c_str());
-	std::cout << wd+"/Signal_mass"+std::to_string((int)(mass))+"_ctau"+std::to_string((int)(ctau))+"_features.txt" << std::endl;
+	sigFeatures.open((wd+"/Signal_Mass"+std::to_string((int)(mass))+"_ctau"+std::to_string((int)(ctau))+"_features.txt").c_str());
+	std::cout << wd+"/Signal_Mass"+std::to_string((int)(mass))+"_ctau"+std::to_string((int)(ctau))+"_features.txt" << std::endl;
 	if (sigFeatures.is_open())
   	{
 		int ch,lxy;
@@ -327,21 +330,34 @@ const int nLxyBin = 3;
 		}
 	}
 	TChain* c = new TChain("Events");
-	std::string datapath[7] = {path+"/Parking1A0_011121",path+"/Parking1A1_011121",path+"/Parking1A2_011121",path+"/Parking1A3_011121",path+"/Parking1A4_011121",path+"/Parking1A5_011121",path+"/Parking1A6_011121"};///,"~/Analysis/data/HNLFlatTuples/Parking1A5","~/Analysis/data/HNLFlatTuples/Parking1A6"};
+	std::string datapath[10] = {path+"/Parking1D0_LowPt_Ldata",path+"/Parking1D1_LowPt_Ldata",path+"/Parking1D2_LowPt_Ldata",path+"/Parking1D3_LowPt_Ldata",path+"/Parking1D4_LowPt_Ldata",path+"/Parking1D5_LowPt_Ldata",path+"/Parking1D6_LowPt_Ldata",path+"/Parking1D7_LowPt_Ldata",path+"/Parking1D8_LowPt_Ldata",path+"/Parking1D9_LowPt"};///,"~/Analysis/data/HNLFlatTuples/Parking1A5","~/Analysis/data/HNLFlatTuples/Parking1A6";
 //	c->Add((datapath[0]+"/HNLFlat_*7.root").c_str());
 	c->Add((datapath[0]+"/*.root").c_str());
-	std::cout << datapath[0]+"/*.root  "<<  c->GetEntries() << std::endl;
+	std::cout << c->GetEntries() << std::endl;
 	c->Add((datapath[1]+"/*.root").c_str());
+	std::cout << c->GetEntries() << std::endl;
 	c->Add((datapath[2]+"/*.root").c_str());
+	std::cout << c->GetEntries() << std::endl;
 	c->Add((datapath[3]+"/*.root").c_str());
+	std::cout << c->GetEntries() << std::endl;
 	c->Add((datapath[4]+"/*.root").c_str());
+	std::cout << c->GetEntries() << std::endl;
 	c->Add((datapath[5]+"/*.root").c_str());
+	std::cout << c->GetEntries() << std::endl;
 	c->Add((datapath[6]+"/*.root").c_str());
 	std::cout << c->GetEntries() << std::endl;
-	
+	c->Add((datapath[7]+"/*.root").c_str());
+	std::cout << c->GetEntries() << std::endl;
+	c->Add((datapath[8]+"/*.root").c_str());
+	std::cout << c->GetEntries() << std::endl;
+	c->Add((datapath[9]+"/*.root").c_str());
+/*	std::cout << c->GetEntries() << std::endl;
+
+	std::cout << c->GetEntries() << std::endl;
+*/	
 	std::string INPATH = "/cmshome/ratramon/Analysis/data/HNLFlatTuples/";
 	//std::string InDataset[nDataset] = {"QCD_Pt15_20","QCD_Pt20_30","QCD_Pt30_50","QCD_Pt50_80","QCD_Pt80_120","QCD_Pt80_120_ext","QCD_Pt120_170","QCD_Pt120_170_ext","QCD_Pt170_300"};
-	std::string InDataset[nDataset] = {"Pt-15to20_","Pt-20to30_","Pt-30to50_","Pt-50to80_","Pt-80to120_","Pt-80to120_ext_","Pt-120to170_","Pt-120to170_ext_","Pt-170to300_"};
+	std::string InDataset[nDataset] = {"Pt-15to20_noTrk","Pt-20to30_noTrk","Pt-30to50_noTrk","Pt-50to80_noTrk","Pt-80to120_noTrk","Pt-80to120_ext_noTrk","Pt-120to170_noTrk","Pt-120to170_ext_noTrk","Pt-170to300_noTrk"};
 	double QCDweights[nDataset];
 	std::ifstream infile("/cmshome/ratramon/Analysis/plugins/QCDWeights.txt");
 	if (infile.is_open()){
@@ -368,22 +384,22 @@ const int nLxyBin = 3;
 	TH1D* hnlMass_MC[nChannel][nLxyBin];
 	std::string sign;
 	std::string signSel;
+	int j =  channel;
 	
 	if (SameSign==0){
 	sign = "";
-	signSel = "&& hnl_charge==0";
+	signSel = "&&  hnl_charge==0 && B_mass<7";
 	}
 	else if (SameSign==1){
 	sign = "SS";
-	signSel = " && LepQProd>0 && hnl_charge==0 ";
+	signSel = "&& LepQProd>0 && hnl_charge==0 && B_mass<7 ";
 	}
 	else if (SameSign==2){
 	sign = "OS";
-	signSel= " && LepQProd<0 && hnl_charge==0 ";
+	signSel= " &&  LepQProd<0 && hnl_charge==0 && B_mass<7 ";
 	}
 	double NsigmaUp, NsigmaDown;
 	for(int i = 0; i< nRegion; i++){
-		for(int j = 0; j< nChannel; j++){
 			if (j==0){
 
 			NsigmaUp = 2;
@@ -393,30 +409,34 @@ const int nLxyBin = 3;
 
 
 			NsigmaUp = 2;
-			NsigmaDown = 3;
+			NsigmaDown = 2;
 
 			}
 			for(int k = 0; k< nLxyBin; k++){
 			std::string Masstitle = ChannelLable[j]+"HNLMass_LxyBin"+std::to_string(k)+"_"+"Region_"+RegLable[i]+"_"+sign;
 			std::string hName = RegLable[i]+"_"+ChannelLable[j]+"_LxyBin"+std::to_string(k)+sign;
-			if (MassWindow)hnlMass[i][j][k]=new TH1D(("window_"+Masstitle).c_str(),("window_"+Masstitle).c_str(),8,mass-NsigmaDown*sigma[j][k],mass+NsigmaUp*sigma[j][k]);
-			else hnlMass[i][j][k]=new TH1D(("window_"+Masstitle).c_str(),("window_"+Masstitle).c_str(),35,2,5);
-	//		std::cout << "mass " << mass << " sigma " << sigma[j][k] << " interval " <<  mass-2*sigma[j][k]<< std::endl;
+			if (MassWindow)hnlMass[i][j][k]=new TH1D(("window_"+Masstitle).c_str(),("window_"+Masstitle).c_str(),1,mass-NsigmaDown*sigma[j][k],mass+NsigmaUp*sigma[j][k]);
+			else hnlMass[i][j][k]=new TH1D(("window_"+Masstitle).c_str(),("window_"+Masstitle).c_str(),25,2.5,3.5);
+			std::cout << "mass " << mass << " sigma " << sigma[j][k] << " interval " <<  mass-2*sigma[j][k]<< std::endl;
 			std::string Massfilter;
 			//if(j==0) Massfilter =" Type =="+std::to_string(j)+" && LxyBin =="+std::to_string(lxy_cuts[k])+" && "+RegCut[i]+signSel+" && fabs(hnl_l_mvaId)==1"+selection;
-			if(j==0) Massfilter =" Type =="+std::to_string(j)+" && "+/*std::to_string*/(lxy_cuts[k])+" && "+RegCut[i]+signSel+" && fabs(hnl_l_mvaId)==1"+selection;
-			else Massfilter =" Type =="+std::to_string(j)+" && "+/*std::to_string*/(lxy_cuts[k])+" && "+RegCut[i]+signSel+selection;
-			std::cout << Masstitle<< std::endl;
-			if(i!=0){c->Draw(("hnl_mass>>"+("window_"+Masstitle)).c_str(),Massfilter.c_str());
+			if( i==0 || i ==3) 
+			Massfilter =" Type =="+std::to_string(j)+" && "+/*std::to_string*/(lxy_cuts[k])+" && "+RegCut[i]+signSel+selection;
+			else if(i==1 || i ==2 ) Massfilter =" Type =="+std::to_string(j)+" && "+/*std::to_string*/(lxy_cuts[k])+" && "+RegCut[i]+signSel;
+			
+			if(j==0) Massfilter +=" && fabs(hnl_l_mvaId)==1";
+			std::cout << Massfilter<< std::endl;
+	//		if(i!=0){
+			c->Draw(("hnl_mass>>"+("window_"+Masstitle)).c_str(),Massfilter.c_str());
 		//	std::cout << "channel" << j  << "lxybin"<<k  << " " << mass-3*sigma[j][k] << " " <<mass+3*sigma[j][k] <<" "  <<hnlMass[i][j][k]->Integral()<<std::endl;
-			}
+	//		}
 			if (SuperQCD && i ==0){
 			for (int id=0;id<nDataset;id++){
 		//	std::cout << "MC"<< std::endl;
 			
 			if (id==0){
-			if(MassWindow)hnlMass_MC[j][k]=new TH1D(Masstitle.c_str(),Masstitle.c_str(),8,mass-NsigmaDown*sigma[j][k],mass+NsigmaUp*sigma[j][k]);
-			else hnlMass_MC[j][k]=new TH1D(Masstitle.c_str(),Masstitle.c_str(),35,2,5);
+			if(MassWindow)hnlMass_MC[j][k]=new TH1D(Masstitle.c_str(),Masstitle.c_str(),1,mass-NsigmaDown*sigma[j][k],mass+NsigmaUp*sigma[j][k]);
+			else hnlMass_MC[j][k]=new TH1D(Masstitle.c_str(),Masstitle.c_str(),25,2.5,3.5);
 			}
 		//	std::cout <<"ch" << j << "lxybin" << k <<  "mass " << mass << " sigma " << sigma[j][k] << " interval " <<  mass-2*sigma[j][k]<< std::endl;
 			AddQCDToHist(id,QCDweights[id],tree.at(id),Massfilter,"hnl_mass",hnlMass_MC[j][k],Masstitle, 0.76, mass, sigma[j][k],MassWindow,NsigmaUp, NsigmaDown);
@@ -424,39 +444,43 @@ const int nLxyBin = 3;
 			}
 			}
 			}
-			}
 		}
 	
 
-
-		for(int nBin = 1; nBin< hnlMass[0][0][0]->GetXaxis()->GetNbins()+1; nBin++){
-		for(int j = 0; j< nChannel; j++){
+		if (unblinded){
+		for(int nBin = 1; nBin< hnlMass[0][j][0]->GetXaxis()->GetNbins()+1; nBin++){
 			for(int k = 0; k< nLxyBin; k++){
-
+		std::cout << hnlMass[0][j][k]->GetBinContent(nBin) << " "  << hnlMass[2][j][k]->GetBinContent(nBin)<< std::endl;
 		if(hnlMass[2][j][k]->GetBinContent(nBin)!=0 )hnlMass[0][j][k]->SetBinContent(nBin,1.0*hnlMass[3][j][k]->GetBinContent(nBin)*hnlMass[1][j][k]->GetBinContent(nBin)/(hnlMass[2][j][k]->GetBinContent(nBin)));	
+		std::cout << hnlMass[0][j][k]->GetBinContent(nBin)<< std::endl;
+		if(hnlMass[2][j][k]->GetBinContent(nBin)!=0 )hnlMass[4][j][k]->SetBinContent(nBin,1.0*hnlMass[1][j][k]->GetBinContent(nBin)/(hnlMass[2][j][k]->GetBinContent(nBin)));	
 		if(hnlMass[2][j][k]->GetBinContent(nBin)!=0 )hnlMass[0][j][k]->SetBinError(nBin,sqrt(pow(hnlMass[1][j][k]->GetBinError(nBin)*hnlMass[3][j][k]->GetBinContent(nBin)/hnlMass[2][j][k]->GetBinContent(nBin),2)+pow(hnlMass[3][j][k]->GetBinError(nBin)*hnlMass[1][j][k]->GetBinContent(nBin)/hnlMass[2][j][k]->GetBinContent(nBin),2)+pow(hnlMass[2][j][k]->GetBinError(nBin)*hnlMass[1][j][k]->GetBinContent(nBin)*hnlMass[3][j][k]->GetBinError(nBin)/pow(hnlMass[2][j][k]->GetBinContent(nBin),2),2)));	
+		if(hnlMass[2][j][k]->GetBinContent(nBin)!=0 )hnlMass[4][j][k]->SetBinError(nBin,sqrt(pow(hnlMass[1][j][k]->GetBinError(nBin)/hnlMass[2][j][k]->GetBinContent(nBin),2)+pow(hnlMass[2][j][k]->GetBinError(nBin)*hnlMass[1][j][k]->GetBinContent(nBin)/pow(hnlMass[2][j][k]->GetBinContent(nBin),2),2)));	
 			
 
 			}	
-		}
+	
 	}	
+	}
 	std::ofstream bkg;
-	bkg.open((wd+"/BkgYields_"+sign+".txt").c_str());		
+	bkg.open((wd+"/BkgYields_.txt").c_str());
 	for(int i = 0; i< nRegion; i++){
-		for(int j = 0; j<nChannel; j++){
-			for(int k = 0; k< nLxyBin; k++){
+		for(int k = 0; k< nLxyBin; k++){
+//	hnlMass[i][j][k]->Scale(41.6/1.79);
 	SavePlot ("HNL Mass(GeV)", hnlMass[i][j][k], (wd+"/ABCDplots/"+std::string(hnlMass[i][j][k]->GetName())).c_str(), false, NULL, false);
+
+	if (i==4 || i==0 ) hnlMass[i][j][k]->SaveAs((wd+"/ABCDplots/"+std::string(hnlMass[i][j][k]->GetName())+"TF_freezed.root").c_str());
 		
 	if (i==0){
 	double integ;
 	double error;
-	integ = hnlMass[i][j][k]->IntegralAndError(1,8,error);
+	integ = hnlMass[i][j][k]->IntegralAndError(1,1,error);
 	bkg << j  << " " << k  << " " << integ << " " << error <<std::endl;
 	hnlMass_MC[j][k]->Scale(1.0*hnlMass[i][j][k]->Integral()/hnlMass_MC[j][k]->Integral());
 	RatioPlot ("HNL Mass(GeV)", hnlMass_MC[j][k],hnlMass[i][j][k],(wd+"/ABCDplots/DataVsQCD_"+std::string(hnlMass[i][j][k]->GetName())).c_str(), false, 1.1);	
 	}
 	}
-	}
+	
 	}
 
 	return 1;
