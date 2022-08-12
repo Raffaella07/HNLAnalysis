@@ -1,0 +1,16 @@
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/hnl_cos2D_PF_Mass3.0_ctau10.root 1 sig  
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/hnl_cos2D_PF_data.root 0 sig 
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/MaxDxyS_PF_Mass3.0_ctau10.root 1 sig 
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/MaxDxyS_PF_data.root 0 sig
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/hnl_vtxProb_PF_Mass3.0_ctau10.root 1 sig 
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/hnl_vtxProb_PF_data.root 0 sig 
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/hnl_pi_pt_PF_Mass3.0_ctau10.root 1 sig 
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/hnl_pi_pt_PF_data.root 0 sig 
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/hnl_l_dz_PF_Mass3_ctau10_.root 1 sig 
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/hnl_l_dz_PF_data_.root 0 sig
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/hnl_l_dxy_PF_Mass3.0_ctau10.root 1 sig 
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/hnl_l_dxy_PF_data.root 0 sig 
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/hnl_l_mvaId_PF_Mass3.0_ctau10.root 1 sig 
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/hnl_l_mvaId_PF_data.root 0 sig 
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/dilepton_mass_PF_Mass3.0_ctau10.root 1 sig 
+/cmshome/ratramon/Analysis/python/MCVsQCD/pdf/dilepton_mass_PF_data.root 0 sig 
