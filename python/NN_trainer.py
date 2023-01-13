@@ -1,6 +1,8 @@
 # first neural network with keras tutorial
 
-import os 
+import os
+import random
+from random import uniform
 from numpy import loadtxt
 import numpy as np
 from datetime import datetime
@@ -29,6 +31,9 @@ import numpy.lib.recfunctions as rfn
 
 import ROOT
 import seaborn as sns
+import multiprocessing
+from multiprocessing import Process,Value,Array, Pool
+from multiprocessing.pool import ThreadPool as threadPool
 
 
 class Trainer(object):
@@ -48,6 +53,8 @@ class Trainer(object):
     self.baseline_selection = baseline_selection
     self.train_samples = train_samples
 
+  #  self.tag = tag
+
     self.target_branch = 'flag'
 
   def createOutDir(self):
@@ -59,53 +66,90 @@ class Trainer(object):
        os.system('mkdir -p {}'.format(outdir))
      return outdir
 
-  def inputHandler(self,mcList,bkgList,sig ):
+  def inputHandler(self,mcList,bkgList,sig,sig_len ):
      
 	'''
 	 Function setting signal and background flags + preparing paramMass variable when going for pNN
 	''' 
 
   	#hnl mass for mass discretization - signal
+#  	MCMass = [1.0,1.5,2.0,3.0,4.5]
   	MCMass = [1.0,1.5,2.0,3.0,4.5]
+	n_ctau = np.array(len(MCMass))
   	#hnl mass for mass discretization - background
-  	massBin=[0.0,1.3,1.8,2.5,3.5,5.5,7]
-	
+  	#massBin=[0.0,1.3,1.8,2.5,3.5,5.5,7]
+	sigma = [0.010,0.011,0.025,0.025,0.035,0.035]
+	nSigmas = 10
+	print "in input handler"	
 	temp = [mcList[i].split("/") for  i in range (0, len(mcList))]	
 	self.train_samples= [temp[i][3].replace("NewSignature_","") for  i in range (0, len(temp))]
-	print self.train_samples
-	 
-
- 	A = [] 
+#	print self.train_samples
+	print sig_len 
+	arrays = []	
+	per_mass = np.zeros(len(MCMass))	
+ 	max = 0 
 	if sig:
-		List = mcList 
-		array_size = signal_size
+#		print mcList
+		array_size = self.signal_size
+  		for i,sample in enumerate(mcList):
+		#build a dataset for each signal hypothesis for either signal or background
+		# events in the dataset are selected in a nSignma window around the signal hypothesis
+  			arrays.append(root2array(sample,"Events",branches= self.features, selection=self.baseline_selection))
+			print  sample, len(arrays[i]), self.signal_size
+			if len(arrays[i]) < self.signal_size:
+				self.signal_size = len(arrays[i])
+			
+        		for j,m in enumerate(MCMass):
+        			if "_"+str(m).replace(".","p")+"_" in sample:
+        				sig_len[j] = sig_len[j]+len(arrays[i])
+					n_ctau[j] +=1
+        	
+		#resize signal inputs to be homogeneus
+		#all signal inputs are resized to the smaller available size among the sizes obtained for different mass hypothesis and for a given category
+
+		#samples resized to hold homogeneus representations of the different ctau signal points
+	
+		for i in range(0,len(arrays)):
+        	#	print "before reshaping ",arrays[i].shape
+      
+        		for j,m in enumerate(MCMass):
+        			if "_"+str(m).replace(".","p")+"_" in sample:
+	 		 		if len(arrays[i]) >self.signal_size*1.0/n_ctau[j]:
+        					arrays[i].resize((int(self.signal_size*1.0/n_ctau[j]),), refcheck=True)
+      	
+
+	  	for i,sample in enumerate(mcList):
+        		for j,m in enumerate(MCMass):
+        			if "_"+str(m).replace(".","p")+"_" in sample:
+        				per_mass[j] = per_mass[j]+len(arrays[i])
+
+		print "after reshaping for similar per mass signal input ", per_mass
+	
+		#N.B  signal.size parameter is set in signal input and used in background - homogeneus sized background wrt to signal all over the mass hypothesis
 	else:
 		List = bkgList 
-		array_size = bkg_size
+		array_size = -1
+		Multiplier =1
+ 
+	  	for i,mass in enumerate(MCMass):
+  			arrays.append(root2array(bkgList,"Events",branches= self.features, selection=self.baseline_selection+" && hnl_mass> "+str(mass-nSigmas*sigma[i])+" && hnl_mass<"+str(mass+nSigmas*sigma[i]), start =0 , stop = Multiplier * self.bkg_size))
+				
+			print arrays[i].shape,
+			if (self.signal_size < len(arrays[i])):
+				arrays[i].resize((int(self.signal_size),), refcheck=True)
+			print arrays[i].shape
+ 
+	#dataset processing - add class flag + mass parameter
+	A = np.recarray(arrays[0].shape,dtype = arrays[0].dtype.descr)
 
-  	if len(mcList) ==1:
-  		print "\n"
-  		print "********* PREPARING INPUTS ************"
-  		print "     training on single sample"
-  		print "***************************************"
-  		print "\n"
-  	else:
-  		print "\n"
-  		print "*************************** PREPARING INPUTS **************************************"
-  		print "                training on multiple samples: pNN training"
-  		print "             will build a new feature 'massParam' with values:"
-  		print "       MC truth for signal: sharp value in ", MCMass
-  		print "  Mean over an interval for bkg: discretization bins: ", massBin
-  		print "***********************************************************************************"
-  		print "\n"
-  
-  
-  	for i,sample in enumerate(List):
-  		array = root2array(sample,"Events",branches= self.features, selection="hnl_charge==0")
-		mass = root2array(sample,"Events",branches= ["hnl_mass"])
-		mass = np.array(mass.tolist(),dtype="float64")
-  		array.resize((int(array_size),))
-  		mass.resize((int(array_size),))
+  	for i,array in enumerate(arrays):
+		if not sig:
+			print int(array_size)
+  	#		array.resize((int(array_size),))
+			
+			print  len(array)
+			array = array[0:int(array_size)]
+			print  len(array)
   		new_dt = np.dtype(array.dtype.descr)
 		if sig:
   			array_flag = np.ones(len(array))
@@ -115,44 +159,23 @@ class Trainer(object):
   			array_flag = np.zeros(len(array))
 
   		discrete_mass = np.full(len(array),-1.)
-  		if len(mcList) !=1:
-  			new_dt = np.dtype(array.dtype.descr + [('massParam','float64')]+ [('flag', 'int64')])
-			if sig:
-  				MCdiscrete = -1 
-  				for mass in MCMass:
-  					if str(mass).replace(".","p") in sample:
-  						MCdiscrete = (mass--massBin[0])/(massBin[len(massBin)-1]-massBin[0])
-  						break
-  				discrete_mass = np.full(len(array),MCdiscrete)
-			else:
-			 	for k in range(0,len(mass)):
- 					for j in range(0,len(massBin)-1):
- 						if (massBin[j] <= mass[k]) and (mass[k] <= massBin[j+1]):
- 							discrete_mass[k] = (mass[(massBin[j] <= mass) & (mass <= massBin[j+1])].mean()-massBin[0])/(massBin[len(massBin)-1]-massBin[0])
-							
+		if (len(mcList)!=1):
+  		   MCdiscrete = -1 
+		   if sig:
+  		       for mass in MCMass:
+  		         	if "_"+str(mass).replace(".","p") in mcList[i]:
+	#				print mcList[i], mass
+  		       			MCdiscrete = mass
+  		       			break
+		   else:
+			MCdiscrete = MCMass[i]
+	  	   discrete_mass = np.full(len(array),MCdiscrete)
   		else: 		
   			new_dt = np.dtype(array.dtype.descr + [('flag', 'int64')])
-  		A.append(np.zeros(array.shape,dtype=new_dt))
-	 	
-		if len(A)>1 or sig: 
-			for b in self.features:
-				A[i][b] = array[b]
-			if len(mcList) !=1:
-				A[i]['massParam'] = discrete_mass
-				if i ==0:
-					self.n_features+=1
-			A[i]['flag'] = array_flag
-	  		print(A[i][0:3])
-	  		print("\n")
-		else:
-			for b in self.features:
-				A[0][b] = array[b]
-			if len(mcList) !=1:
-				A[0]['massParam'] = discrete_mass
-			A[0]['flag'] = array_flag
-	  		print(A[0][0:10])
-	  		print("\n")
-	  		
+
+		array = rfn.append_fields(array,['massParam','flag'],[discrete_mass,array_flag])
+		A = array if i == 0 else rfn.stack_arrays((A,array),usemask=False)
+        		
 	return A
 
 	
@@ -167,11 +190,9 @@ class Trainer(object):
       else:
         raise RuntimeError('Unknown scaler "{}" - Aborting...'.format(self.scaler_type))
 
-      qt.fit(X[:,0:self.n_features-1])
-      xx = qt.transform(X[:,0:self.n_features-1])
-      print xx.shape
-      print X[:,(self.n_features-1)].shape
-      xx = np.insert(xx,(self.n_features-1),X[:,(self.n_features-1)],axis=1)
+      qt.fit(X)
+      xx = qt.transform(X)
+ #     print xx.shape
 
       return xx, qt
 
@@ -186,24 +207,29 @@ class Trainer(object):
     '''
 
     #merge signal and background dataset + shuffle
-    dataset = rfn.stack_arrays((mc_df,bkg_df), usemask = False ) 
+    dataset = rfn.stack_arrays((mc_df,bkg_df), usemask = False )
+     
+    print dataset[0:20]
+  #  print dataset[0:10]
     dataset = np.array(dataset.tolist(),dtype="float64")
     np.random.shuffle(dataset)
+    
+    self.n_features+=1
 
-    #check obtaine structure
-    print(dataset[0:100])
+    
+    #check obtained structure
 
-    #define training and score features
-    print '____________________________________________________________________________________________________________', self.n_features
+   
     X = dataset[:,0:self.n_features]
-    print X.shape
+    print X[0:20]
+  #  print X.shape
     Y  = dataset[:,self.n_features]
 
 
     # scale the features
     # this is an important step!
     xx, qt = self.doScaling(X)
-    print xx.shape
+  #  print xx.shape
 
     # and save the scaler, which will have to be used throughout the full process, even at evaluation time
     scaler_filename = '/'.join([self.outdir, 'input_tranformation_weighted.pck'])
@@ -281,6 +307,7 @@ class Trainer(object):
     '''
       Perform the training
     '''
+  #  print 'train sample size ', len(x_train)
     history = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True)  
     return history
 
@@ -311,7 +338,7 @@ def plotLoss(epochs,history,outdir):
    saveFig(outdir,plt, 'loss')
 
 
-def plotAccuracy(epochs,historyy,outdir):
+def plotAccuracy(epochs,history,outdir):
   '''
     Plot the accuracy for training and validation sets
   '''
@@ -328,7 +355,7 @@ def plotAccuracy(epochs,historyy,outdir):
   plt.legend()
   saveFig(outdir,plt, 'accuracy')
 
-def plotROC(model,x_train_std,x_test_std,outdir):
+def plotROC(model,x_train_std,x_test_std,y_train,y_test,outdir):
 
   train_pred = model.predict(x_train_std)
   train_pred = [i[0] for i in train_pred]
@@ -733,41 +760,8 @@ def plotScore( outdir, features,model, mc, bkg,lable,train_samples):
 #	plotScore(ele_branches[0:len(ele_branches)-1]+["hnl_mass"],model,signals[1],x_test.compress(~y_test.astype(bool),axis=0),"mass3p0_ctau10" )
 #
 
+def singleTraining(specs):
 
-
-
-if __name__ == '__main__':
-
-  features = ["hnl_cos2D","B_mass","hnl_pi_pt","hnl_pi_DCAS"]
- 
-  inputSig = ["../data/HNLFlatTuples/NewSignature_3p0_ctau100p0/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_2p0_ctau100p0/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_1p0_ctau100p0/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_4p5_ctau100p0/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_1p5_ctau100p0/HNLFlat_0.root"]#,"../data/HNLFlatTuples/NewSignature_3p0_ctau1p0/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_2p0_ctau10p0/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_1p0_ctau10p0/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_4p5_ctau0p1/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_1p5_ctau10p0/HNLFlat_0.root"]
-  otherSig = ["../data/HNLFlatTuples/NewSignature_3p0_ctau100p0/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_3p0_ctau1p0/HNLFlat_0.root"]
-
-  inputBkg =[
-	"../data/HNLFlatTuples/Parking1A0_newSig_4varsL_section0/HNLFlat_*11.root",
-#	"../data/HNLFlatTuples/Pt-15to20_newSig/HNLFlat_*.root",
-#	"../data/HNLFlatTuples/Pt-20to30_newSig/HNLFlat_*.root",
-#	"../data/HNLFlatTuples/Pt-30to50_newSig/HNLFlat_*.root",
-#	"../data/HNLFlatTuples/Pt-50to80_newSig/HNLFlat_*.root",
-#	"../data/HNLFlatTuples/Pt-80to120_newSig/HNLFlat_*.root",
-#	"../data/HNLFlatTuples/Pt-80to120_ext_newSig/HNLFlat_*.root",
-#	"../data/HNLFlatTuples/Pt-120to170_newSig/HNLFlat_*.root",
-#	"../data/HNLFlatTuples/Pt-120to170_ext_newSig/HNLFlat_*.root",
-#	"../data/HNLFlatTuples/Pt-170to300_newSig/HNLFlat_*.root",
-
-	]
-
-  n_features = len(features)
-  epochs = 50
-  batch_size = 32
-  signal_size = 3000
-  bkg_size = 50000
-  scaler_type = 'robust'
-  do_early_stopping = False
-  do_reduce_lr = False
-  dirname = 'test'
-  baseline_selection = 'hnl_charge==0'
-  samples = []
 
 
   #NOTE add optimiser, learning rate etc? 
@@ -783,13 +777,15 @@ if __name__ == '__main__':
       scaler_type = scaler_type,
       do_early_stopping = do_early_stopping,
       do_reduce_lr = do_reduce_lr,
-      dirname = "trainNN",
-      baseline_selection = baseline_selection,
+      dirname = "trainNN_"+specs[0],
+      baseline_selection = specs[1],
       train_samples = samples
 )
   trainer.outdir = trainer.createOutDir()     
-  Sig = trainer.inputHandler(inputSig,inputBkg,True)	
-  Bkg = trainer.inputHandler(inputSig,inputBkg,False)
+
+  sig_len = np.zeros(5)
+  Sig = trainer.inputHandler(inputSig,inputBkg,True,sig_len)	
+  Bkg = trainer.inputHandler(inputSig,inputBkg,False,sig_len)
     
 
  
@@ -800,13 +796,12 @@ if __name__ == '__main__':
   
   x_train, x_test, x_val,y_train, y_test, y_val = trainer.splitAndTransform(xx,Y,qt)
 
-  print(len(y_test.compress(y_test.astype(bool),axis=0)))
+  #print(len(y_test.compress(y_test.astype(bool),axis=0)))
   history = trainer.train(model, x_train, y_train, x_val, y_val, callbacks)
-   
   model.save_weights('net_model_weights.h5')
 
 
-  plotROC(model,x_train,x_test,trainer.outdir)
+  plotROC(model,x_train,x_test,y_train,y_test,trainer.outdir)
   plotLoss(trainer.epochs,history,trainer.outdir)
   plotAccuracy(trainer.epochs,history,trainer.outdir)
   plotScore(trainer.outdir,trainer.features,model,qt.inverse_transform(x_test).compress(y_test.astype(bool),axis=0),qt.inverse_transform(x_test).compress(~y_test.astype(bool),axis=0),"",trainer.train_samples)
@@ -894,7 +889,7 @@ if __name__ == '__main__':
   #print([i[0] for i in model.predict(passing_array)])
   #pas.loc[:,'nn'] = [i[0] for i in model.predict(passing_array)]
   #failing.loc[:,'nn'] = [i[0] for i in model.predict(failing_array)]
-  print test_pred_pass[0:10]
+  #print test_pred_pass[0:10]
   corr_test = np.append(x_test.compress(y_test.astype(bool),axis=0),test_pred_pass,axis=1)
   corr = np.corrcoef(corr_test,rowvar=False)
   print corr.shape
@@ -923,7 +918,7 @@ if __name__ == '__main__':
   #####   CORRELATION MATRIX BACKGROUND
   ##########################################################################################
   # Compute the correlation matrix for the signal
-  print test_pred_fail[0:10]
+ # print test_pred_fail[0:10]
   corr_test = np.append(x_test.compress(~y_test.astype(bool),axis=0),test_pred_fail,axis=1)
   corr = np.corrcoef(corr_test,rowvar=False)
   print corr.shape
@@ -947,19 +942,104 @@ if __name__ == '__main__':
   plt.tight_layout()
   plt.savefig(trainer.outdir+'/corr_fail.png' )
   
-  signals = []
-  signals.append(root2array(otherSig[0],"Events",branches= features))
-  signals.append(root2array(otherSig[1],"Events",branches= features))
-  test_bkg = root2array("../data/HNLFlatTuples/Parking1A0_newSig_4varsL_section0/HNLFlat_*12.root","Events",branches= features+["hnl_mass"])
-  test_bkg.resize((10000,))
+
+if __name__ == '__main__':
 
 
-  signals[0] = np.array(signals[0].tolist(),dtype="float64")
-  signals[1] = np.array(signals[1].tolist(),dtype="float64")
+	features = ["hnl_cos2D","hnl_vtxProb","hnl_pi_pt","B_mass","hnl_vtxChi2","hnl_l_pt","TrgMu_pt","hnl_lxy_sig","B_pt","dilepton_mass"]
+ 
+	inputSig = [
+		"../data/HNLFlatTuples/NewSignature_4p5_ctau0p1/HNLFlat_0.root",
+		"../data/HNLFlatTuples/NewSignature_4p5_ctau1p0/HNLFlat_0.root",
+		"../data/HNLFlatTuples/NewSignature_3p0_ctau1p0/HNLFlat_0.root",
+	 	"../data/HNLFlatTuples/NewSignature_1p0_ctau10p0/HNLFlat_0.root",
+	 	"../data/HNLFlatTuples/NewSignature_1p5_ctau10p0/HNLFlat_0.root",
+	 	"../data/HNLFlatTuples/NewSignature_2p0_ctau10p0/HNLFlat_0.root",
+	        "../data/HNLFlatTuples/NewSignature_3p0_ctau10p0/HNLFlat_0.root",
+	 	"../data/HNLFlatTuples/NewSignature_4p5_ctau10p0/HNLFlat_0.root",
+	 	"../data/HNLFlatTuples/NewSignature_1p0_ctau100p0/HNLFlat_0.root",
+	 	"../data/HNLFlatTuples/NewSignature_1p5_ctau100p0/HNLFlat_0.root",
+	 	"../data/HNLFlatTuples/NewSignature_2p0_ctau100p0/HNLFlat_0.root",
+	        "../data/HNLFlatTuples/NewSignature_3p0_ctau100p0/HNLFlat_0.root",
+	 	"../data/HNLFlatTuples/NewSignature_4p5_ctau100p0/HNLFlat_0.root",
+	 	"../data/HNLFlatTuples/NewSignature_1p0_ctau1000p0/HNLFlat_0.root",
+	 	"../data/HNLFlatTuples/NewSignature_1p5_ctau1000p0/HNLFlat_0.root",
+	 	"../data/HNLFlatTuples/NewSignature_2p0_ctau1000p0/HNLFlat_0.root",
+		"../data/HNLFlatTuples/NewSignature_3p0_ctau1000p0/HNLFlat_0.root"
+		]#,"../data/HNLFlatTuples/NewSignature_1p5_ctau100p0/HNLFlat_0.root"]#,"../data/HNLFlatTuples/NewSignature_3p0_ctau1p0/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_2p0_ctau10p0/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_1p0_ctau10p0/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_4p5_ctau0p1/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_1p5_ctau10p0/HNLFlat_0.root"
+	otherSig = ["../data/HNLFlatTuples/NewSignature_3p0_ctau100p0/HNLFlat_0.root","../data/HNLFlatTuples/NewSignature_3p0_ctau1p0/HNLFlat_0.root"]
 
-  plotScore(trainer.outdir,features,model,signals[0],qt.inverse_transform(x_test).compress(~y_test.astype(bool),axis=0),"mass2p0_ctau100",trainer.train_samples )
-  plotScore(trainer.outdir,features,model,signals[1],qt.inverse_transform(x_test).compress(~y_test.astype(bool),axis=0),"mass3p0_ctau1",trainer.train_samples )
+ 	inputBkg =[
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section0_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section0_1/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section1_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section1_1/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section2_1/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section2_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section3_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section4_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section4_1/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section5_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section6_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section7_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section8_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section9_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section10_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section11_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section11_1/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section12_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section13_0/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section13_1/HNLFlat_*.root",
+	"../data/HNLFlatTuples/Parking1D0_newSig_nn_section14_0/HNLFlat_*.root",
 
+
+#	"../data/HNLFlatTuples/Parking1A0_newSig_4varsL_section1/HNLFlat_*.root",
+#	"../data/HNLFlatTuples/Pt-15to20_newSig/HNLFlat_*.root",
+#	"../data/HNLFlatTuples/Pt-20to30_newSig/HNLFlat_*.root",
+#	"../data/HNLFlatTuples/Pt-20to30_newSig/HNLFlat_*.root",
+#	"../data/HNLFlatTuples/Pt-30to50_newSig/HNLFlat_*.root",
+#	"../data/HNLFlatTuples/Pt-50to80_newSig/HNLFlat_*.root",
+#	"../data/HNLFlatTuples/Pt-80to120_newSig/HNLFlat_*.root",
+#	"../data/HNLFlatTuples/Pt-80to120_ext_newSig/HNLFlat_*.root",
+#	"../data/HNLFlatTuples/Pt-120to170_newSig/HNLFlat_*.root",
+#	"../data/HNLFlatTuples/Pt-120to170_ext_newSig/HNLFlat_*.root",
+#	"../data/HNLFlatTuples/Pt-170to300_newSig/HNLFlat_*.root",
+
+	]
+
+	n_features = len(features)
+	epochs = 50
+	batch_size = 32
+	signal_size = 200000
+	bkg_size = 100000000
+	scaler_type = 'robust'
+	do_early_stopping = False
+	do_reduce_lr = True
+	dirname = 'test'
+	baseline_selection = "hnl_charge==0"
+	samples = []
+	tag = "test"
+   
+     #   ctx = multiprocessing.set_start_method('spawn')
+	specs = [
+		 ["LxySUnder50_OS","hnl_charge ==0 && hnl_lxy_sig<50 && LepQProd<0"],
+ 		 ["LxySUnder50_SS","hnl_charge ==0 && hnl_lxy_sig<50 && LepQProd>0"],
+        	 ["LxySOver50Under150_OS","hnl_charge ==0 && hnl_lxy_sig>50 && hnl_lxy_sig<150 && LepQProd<0"],
+        	 ["LxySOver50Under150_SS","hnl_charge ==0 && hnl_lxy_sig>50 && hnl_lxy_sig<150 && LepQProd>0"],
+        	 ["LxySOver150_OS","hnl_charge ==0 && hnl_lxy_sig>150 && LepQProd<0"],
+        	 ["LxySOver150_SS","hnl_charge ==0 && hnl_lxy_sig>150 && LepQProd>0"],
+
+		]   
+ 
+##	output = Parallel(n_jobs=6)(delayed(singleTraining)(i) for i in specs)	 
+ 	Tpool = Pool(len(specs))
+# 	Tpool = Pool(6)
+#	results = Parallel(n_jobs=6, prefer='threads')(delayed(singleTraining)(i) for i in specs)
+  	results = Tpool.map_async(singleTraining,specs) 
+#	singleTraining(specs[0])
+  #	Tpool.termminate()
+ 	Tpool.close()
+ 	Tpool.join()
 
 
 
