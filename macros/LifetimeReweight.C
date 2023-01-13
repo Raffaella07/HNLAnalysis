@@ -12,55 +12,143 @@
 #include "TFile.h"
 #include "TAxis.h"
 
+void sig_fromcsv(std::string filename, std::vector<std::string>* flatIn,std::vector<std::string>* label, std::vector<double>* genEventCount,std::vector<double>* filterEff,std::vector<double>* mass,std::vector<double>* ctau, std::vector<double>* sigma,std::vector<double>* Flav_ratio){
+
+	fstream fin;
+
+	// Open an existing file
+	fin.open(filename.c_str(), ios::in);
+
+
+	// Read the Data from the file
+	// as String Vector
+	vector<string> row;
+	string line, word, temp;
+
+	while (fin >> temp) {
+
+		row.clear();
+
+		// read an entire row and
+		// store it in a string variable 'line'
+		getline(fin, line);
+
+		// used for breaking words
+		stringstream s(line);
+
+		// read every column data of a row and
+		// store it in a string variable, 'word'
+		int counter = 0;
+		if (line.find('+')== std::string::npos ){
+		 continue;
+		}
+		while (getline(s, word,' ')) {
+
+			// add all the column data
+			// of a row to a vector
+			counter++;
+			row.push_back(word);
+		}
+		flatIn->push_back(row[9].c_str());
+		label->push_back(row[1]);
+//		std:: cout << flatIn->at(0)<< std::endl;
+		genEventCount->push_back(atof(row[5].c_str()));
+//		std:: cout << genEventCount->at(0)<< std::endl;
+		filterEff->push_back(atof(row[6].c_str()));
+		mass->push_back(atof(row[2].c_str()));
+		ctau->push_back(atof(row[3].c_str()));
+		sigma->push_back(atof(row[7].c_str()));
+		Flav_ratio->push_back(atof(row[8].c_str()));
+
+
+		// Compare the roll number
+/*		if (roll2 == rollnum) {
+
+			// Print the found data
+			count = 1;
+			cout << "Details of Roll " << row[0] << " : \n";
+			cout << "Name: " << row[1] << "\n";
+			cout << "Maths: " << row[2] << "\n";
+			cout << "Physics: " << row[3] << "\n";
+			cout << "Chemistry: " << row[4] << "\n";
+			cout << "Biology: " << row[5] << "\n";
+			break;
+		}*/
+	}
+//	if (count == 0)
+//		cout << "Record not found\n";*/
+}
+
+
+
 double LifetimeReweight(float mass, float ctau,float ct){
 
 
+	std::vector<double> GenEvtCount,Filter,Mass,Ctau,Sigma,Flav_ratio;
+	std::vector<std::string> Files, label;
+
+	
+	sig_fromcsv("../data/MC_datasets_InclusiveFilterEff.csv",&Files,&label,&GenEvtCount,&Filter,&Mass,&Ctau,&Sigma,&Flav_ratio);
+
 //dummy initialization for miniAOD genevt count numbers 
-	double genEvtCount[5][4]={{9.080620000000000000e+05,4.532249000000000000e+06,9.950223000000000000e+06,-1},
-				{1.666740000000000000e+05,1.955714000000000000e+06,-1,-1},
-                                {5.673050000000000000e+05,1.916707000000000000e+06,-1},
-                                {4.411610000000000000e+05,6.562680000000000000e+05,1.314002000000000000e+06,3.282584000000000000e+06},
-                                {1.653590000000000000e+05,5.065250000000000000e+05,5.106050000000000000e+05,1.195035000000000000e+06}};
+/*	double genEvtCount[5][4]={{9.080620000000000000e+05,4.532249000000000000e+06,1.312593500000000000e+07,-1},
+				{7.857100000000000000e+05,1.955714000000000000e+06,7.546074000000000000e+06,-1},
+                                {5.673050000000000000e+05,1.916707000000000000e+06,8.421721000000000000e+06,-1},
+                                {5.252660000000000000e+05,6.562680000000000000e+05,1.314002000000000000e+06,3.282584000000000000e+06},
+                                {5.914900000000000000e+05,5.065250000000000000e+05,5.962870000000000000e+05,1.195035000000000000e+06}};
 
 
 //dummy initialization for the signal grid
 
 	double grid[5][4]={     {10,100,1000,-1},
-				{10,100,-1,-1},
-				{10,100,-1,-1},
+				{10,100,1000,-1},
+				{10,100,1000,-1},
 				{1,10,100,1000},
 				{0.1,1,10,100},
 			};
 	double hnlMass[5]={1,1.5,2,3,4.5};
 	
-
+	double filter[5][4]={{9.49e-03,	7.90e-03,2.03e-03,-1},
+				{8.50e-03,7.36e-03,2.13e-03,-1},
+                                {7.99e-03,7.12e-03,2.05e-03,-1},
+                                {1.69e-02,1.69e-02,1.59e-02,5.78e-03},
+                                {2.58e-02,2.58e-02,2.58e-02,2.51e-02}};
+*/
 
 	
-	double den=0.;
-	int GenCountTot=0;
+	long double den=0.;
+	long double GenCountTot=0;
+	double avgFilter=0;
 
 
-	for(int i=0;i<5;i++){
+	int f;
+//	std::cout << "mass " << mass<< std::endl;
+		for(int i=0;i<Files.size();i++){
 
-	if (mass==hnlMass[i]){
-		
-		for(int j=0;j<4;j++){
-
-		    if (grid[i][j]>0 && ctau < grid[i][j]){
-				den += genEvtCount[i][j]/grid[i][j] * exp(-ct/grid[i][j]);
-				GenCountTot+=genEvtCount[i][j];
+			if (mass==Mass[i] && Ctau[i]>0){
+				den += GenEvtCount[i]/(Ctau[i]*Filter[i]) * exp(-ct/(Ctau[i]));
+//				if (Ctau[i]<100*ct)	std::cout << "suppression" << Ctau[i] << " "  << ct << " " <<  exp(-ct/Ctau[i])<< std::endl;
+				GenCountTot+=GenEvtCount[i]*Flav_ratio[i];
+				avgFilter+=GenEvtCount[i]*Flav_ratio[i]*Filter[i];
 
 							}
 
 
 				}
+	
 
-
-	  		}		
-		}
-	double num = GenCountTot*1.0/ctau * exp(-ct/ctau);
-	std::cout << "num " << num << std::endl;
-	std::cout << "den " << den << std::endl;
+	  		
+		
+	avgFilter = avgFilter/GenCountTot;
+/*
+  	std::cout << "ctau " << ctau<< std::endl;
+  	std::cout << "avgFilter" << avgFilter<< std::endl;
+  	std::cout << "GenEvtCount" << GenCountTot << std::endl;
+  	std::cout << "suppression" << exp(-ct/(ctau))<< std::endl;*/
+	long double num = GenCountTot*1.0/(ctau*avgFilter) * exp(-ct/(ctau));
+/*  	std::cout << "num " << num << std::endl;
+  	std::cout << "den " << den << std::endl;
+  	std::cout << "weight " << num*1.0/den << std::endl;*/
 	return num/den;	
 
 }

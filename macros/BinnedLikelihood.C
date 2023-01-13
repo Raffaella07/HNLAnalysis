@@ -39,18 +39,19 @@ double BinnedLikelihood(int ch, int mass, int ctau,double* point){
 	double PBkg = 1;
 	if (debug)std::cout << sigHistos.size() << std::endl;
 	for (int nH=0; nH<sigHistos.size();nH++){
+	if (debug) std::cout << point[nH] << std::endl;
 	 
-	for (int i=0; i<sigHistos[nH]->GetXaxis()->GetNbins();i++){
-		if (sigHistos[nH]->GetXaxis()->FindBin(point[nH])==i){		
-  		if(debug)std::cout<< point[nH] << " " << i << " bin content "<< sigHistos[nH]->GetBinContent(i) << std::endl;
+	for (int i=0; i<sigHistos[nH]->GetXaxis()->GetNbins()+1;i++){
+		if ((sigHistos[nH]->GetXaxis()->FindBin(point[nH])==i) || (i==sigHistos[nH]->GetXaxis()->GetNbins() && point[nH]>sigHistos[nH]->GetXaxis()->GetBinLowEdge(i)) ){		
 
+  		if(debug)std::cout<< point[nH] << " " << i << " bin content "<< sigHistos[nH]->GetBinContent(i) << std::endl;
         	PSig  *= sigHistos[nH]->GetBinContent(i);
-  		if(debug)std::cout << PSig<< std::endl;
+  		if(debug)std::cout <<"Psig " << PSig<< std::endl;
         	}	
-        	if (bkgHistos[nH]->GetXaxis()->FindBin(point[nH])==i){
+        	if (bkgHistos[nH]->GetXaxis()->FindBin(point[nH])==i|| (i==bkgHistos[nH]->GetXaxis()->GetNbins() && point[nH]>bkgHistos[nH]->GetXaxis()->GetBinLowEdge(i))){
   		if(debug)std::cout << point[nH] << " " << i << " bin content "<< bkgHistos[nH]->GetBinContent(i) << std::endl;
         	PBkg *= bkgHistos[nH]->GetBinContent(i);
-  		if(debug)std::cout << PBkg<< std::endl;
+  		if(debug)std::cout << "Pbkg " <<  PBkg << std::endl;
 
         	}	
 
@@ -59,6 +60,8 @@ double BinnedLikelihood(int ch, int mass, int ctau,double* point){
 
 
         	}
+	
+	if (debug) std::cout << " " << std::endl;
         }
 
   	if(debug)std::cout << PSig<< std::endl;

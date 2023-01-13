@@ -33,9 +33,9 @@ void YieldsPlotter(std::string wd, std::string sign ){
 		signal[i]->SetLineColor(colors[i]);
 		background[i]->SetLineColor(colors[i]);
 		m->Add(signal[i],"l");	
-		m->Add(background[i],"l");	
+//		m->Add(background[i],"l");	
 		l->AddEntry(signal[i],("signal, m = 3 GeV, "+lxy_string[i]).c_str(),"l");
-		l->AddEntry(background[i],("background, "+lxy_string[i]).c_str(),"l");
+//		l->AddEntry(background[i],("background, "+lxy_string[i]).c_str(),"l");
 		
 
 	}

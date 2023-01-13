@@ -1,3 +1,34 @@
+//#include "/interface/GBRForestTools.h"
+//#include "../interface/BParkTools.h"
+//#include "../interface/Utils.h"
+//#include "../interface/SmallBToMuLPiClass.h"
+//#include "TTree.h"
+////#include <ROOT/RDataFrame.hxx>
+////#include <ROOT/RVec.hxx>
+////#include "../../../XGBoost-FastForest/include/fastforest.h"
+//#include <stdint.h>
+////#include "TStopwatch.h"
+//#include <iostream>
+//#include <fstream>
+//#include <utility>
+//#include <vector>
+//#include <math.h>
+//#include <dirent.h>
+//#include "TFile.h"
+//#include "TAxis.h"
+//#include "TTree.h"
+//#include "TLatex.h"
+//#include "TCanvas.h"
+//#include "TGraph.h"
+//#include "TGraphErrors.h"
+//#include "TStyle.h"
+//#include "TString.h"
+//#include "TLorentzVector.h"
+//#include "TMVA/Tools.h"
+//#include "TMVA/Reader.h"
+//#include "TMVA/MethodBDT.h"
+//#include "ROOT/RDataFrame.hxx"
+
 
 void setStyle() {
 
@@ -83,6 +114,8 @@ void setStyle() {
 	style->cd();
 
 }
+
+
 void RatioPlot(std::string titlestring,TH1D* hist, TH1D* histMock, const char* filename,bool log,double plotScale){
 
 	std::cout << "in function "  << std::endl;
@@ -146,7 +179,7 @@ void RatioPlot(std::string titlestring,TH1D* hist, TH1D* histMock, const char* f
 	hist->SetMarkerStyle(8);
 	hist->SetLineColor(sel_colors[0]);
 	hist->SetMarkerColor(sel_colors[0]);
-	hist->SetFillStyle(3003);
+	hist->SetFillStyle(0);
 	histMock->SetLineWidth(2);
 	histMock->SetMarkerStyle(8);
 	histMock->SetLineColor(sel_colors[1]);
@@ -162,7 +195,7 @@ void RatioPlot(std::string titlestring,TH1D* hist, TH1D* histMock, const char* f
 //   myObjects[i].SetMarkerColor(cols.At(i));
 //   }
 	leg->AddEntry(hist,"Signal region QCD MC","lep");
- 	leg->AddEntry(histMock,"BParking 1A, 0.76 fb^{-1}","lep");
+ 	leg->AddEntry(histMock,"ABCD QCD MC","lep");
 	
 //	l.DrawLatex(h[i]->GetXaxis()->GetXmin()+x_lable*(h[i]->GetXaxis()->GetXmax()-h[i]->GetXaxis()->GetXmin()),.95*y_lable-i*y_lable/20,(std::string(h[i]->GetTitle())+" "+std::to_string((int)h[i]->GetEntries())).c_str());
 	//leg->AddEntry(sum,("Total Bkg "+std::to_string((int)hist->GetEntries())).c_str(),"f");
@@ -228,6 +261,7 @@ void RatioPlot(std::string titlestring,TH1D* hist, TH1D* histMock, const char* f
 	delete canvas;
 }
 
+
 void SavePlot (std::string titlestring, TH1D * histo, const char * filename, bool log, TF1* fit, bool lable){
 
 	TCanvas* canvas = new TCanvas("canva","canva",600,550);
@@ -257,24 +291,65 @@ void SavePlot (std::string titlestring, TH1D * histo, const char * filename, boo
 
 	delete canvas;
 }
+void SuperPlot (std::string titlestring, TH1D * hist1,TH1D * hist2,  const char * filename, bool log, TF1* fit, bool lable){
 
-void AddQCDToHist(int SetIdx,double QCDweight,TChain* tree, std::string filter, std::string leaf,TH1D * hist, std::string name, float lumi, float mass,double sigma, bool window, float NsigmaUp, float NsigmaDown){
+	TCanvas* canvas = new TCanvas("canva","canva",600,550);
+	//TFile* histos = new TFile("gausslog.root","UPDATE","",0);
+//	std::string PNGPATH = "/eos/home-r/ratramon/www/";
+//	std::string PDFPATH = "../plots/";
+	//const char * temptitle = titlestring.c_str();
+	setStyle();
+	if (log) canvas->SetLogy();
+	hist1->GetXaxis()->SetMaxDigits(2);
+	hist1->SetLineWidth(1);
+	hist1->SetMarkerStyle(8);
+	hist1->SetMarkerSize(1);
+	hist1->SetLineColor(kAzure+7);
+	hist1->SetMarkerColor(kAzure+7);
+	hist2->GetXaxis()->SetMaxDigits(2);
+	hist2->SetLineWidth(1);
+	hist2->SetMarkerStyle(8);
+	hist2->SetMarkerSize(1);
+	hist2->SetLineColor(kRed-7);
+	hist2->SetMarkerColor(kRed-7);
+	hist1->GetXaxis()->SetTitle(titlestring.c_str());
+	hist1->GetYaxis()->SetTitle("entries");
+	std::cout << "axis title" << titlestring.c_str() << std::endl;
+	hist1->Draw("PE");
+	hist2->Draw("samePE");
+	if(fit != NULL) fit->Draw("samePE1");
+//	if(lable)lables1D(canvas,histo)
+	canvas->SaveAs((std::string(filename)+".pdf").c_str());
+//	canvas->SaveAs((PNGPATH+std::string(filename)+".png").c_str());
+	canvas->Clear();
+//	histos->Close();
+
+/*	TCanvas* canvaNorm = new TCanvas("canva","canva",600,550);
+
+	hist1->DrawNormalized("PE1");
+	hist2->DrawNormalized("samePE1");
+	
+	
+	canvaNorm->SaveAs((std::string(filename)+"_norm.pdf").c_str());*/
+	delete canvas;
+//	delete canvaNorm;
+}
+
+
+void AddQCDToHist(int SetIdx,double QCDweight,TChain* tree, std::string filter, std::string leaf,ROOT::RDF::TH1DModel h_model,TH1D * hist, std::string name){
 //void AddQCDToHist(int SetIdx,double QCDweight,ROOT::RDataFrame d, std::string filter, std::string leaf,ROOT::RDF::TH1DModel h_model,TH1D * hist, std::string name)
 	//ROOT::EnableImplicitMT(4);
 	if(SetIdx ==0){
 			tree->Draw((leaf+">>"+std::string(hist->GetName())).c_str(),filter.c_str());
 //			d.Filter(filter.c_str()).Histo1D(h_model,leaf.c_str()).GetValue().Copy(*hist);
-			hist->Scale(QCDweight*lumi);		
+			hist->Scale(QCDweight);		
 			hist->SetTitle(name.c_str());		
 			hist->SetName(name.c_str());		
-	}else{
-			TH1D * temp;
-			//std::cout << "mass " << mass << " sigma " << sigma << std::endl;
-			if(window) temp = new TH1D("temp","temp",1,mass-NsigmaDown*sigma,mass+NsigmaUp*sigma);
-			else temp = new TH1D("temp","temp",100,0,6);
+	}else{ 
+			TH1D * temp = new TH1D("temp","temp",40,1,7);
 			tree->Draw((leaf+">>"+std::string(temp->GetName())).c_str(),filter.c_str());
 		//	d.Filter(filter.c_str()).Histo1D(h_model,leaf.c_str()).GetValue().Copy(*temp);
-			temp->Scale(QCDweight*lumi);		
+			temp->Scale(QCDweight);		
 			temp->SetTitle(name.c_str());		
 			temp->SetName(name.c_str());		
 			hist->Add(temp);
@@ -283,10 +358,9 @@ void AddQCDToHist(int SetIdx,double QCDweight,TChain* tree, std::string filter, 
 
 		}
 }
-int Data_ABCD(std::string path,int SameSign, bool SuperQCD,bool MassWindow,double mass,double ctau,int channel,std::string wd, std::string selection, bool unblinded){
+int QCD_histos(){
 
 	gROOT->SetBatch(kTRUE);	
-	std::cout << wd+"/BkgYields_.txt"<< std::endl;
 	const int nDataset = 9;
 	const int LxyBin = 4;
 	const int Channels = 4;
@@ -298,66 +372,22 @@ int Data_ABCD(std::string path,int SameSign, bool SuperQCD,bool MassWindow,doubl
 	std::string cutX = "(hnl_vtxProb >0.05)";
 	std::string cutY = "(hnl_cos2D >0.996)";
 	std::string RegCut[ABCD];
-	std::string RegLable[ABCD] = {"AMock","B","C","D","TF"};
-	
+	std::string RegLable[ABCD] = {"A_SR","B","C","D","TF","MockA"};
+	std::string SignLable [2] = {"OS","SS"};
 	RegCut[0] = cutX + " && " + cutY; //A
 	RegCut[1] = cutX + " && !" + cutY; //B
 	RegCut[2] = "!"+cutX + " && !" + cutY; //C
 	RegCut[3] = "!"+cutX + " && " + cutY; //D
-	RegCut[4] = "hnl_charge==0"; //Global TF on A 
+	RegCut[4] = " "; //Global TF on A 
 	RegCut[5] = " "; // recomputed A 
-	//ROOT::RDF::TH1DModel *  h_models[2];
-//	const int nRegion,nChannel, nLxyBin;
-	const int nRegion = 5; //B,C,D with A blinded and mocked
-	const int nChannel = 4;
-	const int nLxyBin = 3;
-//	std::string lxy_cuts[4]= {"hnl_lxy<3", "hnl_lxy>3 && hnl_lxy<10", " hnl_lxy<20 && hnl_lxy>10","hnl_lxy>20"};
-
-	std::string lxy_cuts[3]= {"hnl_lxy<1", "hnl_lxy>1 && hnl_lxy<5", "hnl_lxy>5"};
-	double sigma[nChannel][nLxyBin];
-	std::ifstream sigFeatures;
-	sigFeatures.open((wd+"/Signal_Mass"+std::to_string((int)(mass))+"_ctau"+std::to_string((int)(ctau))+"_features.txt").c_str());
-	std::cout << wd+"/Signal_Mass"+std::to_string((int)(mass))+"_ctau"+std::to_string((int)(ctau))+"_features.txt" << std::endl;
-	if (sigFeatures.is_open())
-  	{
-		int ch,lxy;
-		double sig,sigErr,Sigma;
-		while(sigFeatures>>ch>>lxy>>sig>>sigErr>>Sigma){
-		if (Sigma != -99)sigma[ch][lxy]= Sigma;
-		else sigma[ch][lxy] = 0.07; 
-		std::cout << "sigma" << ch << " " << lxy << " " << sigma[ch][lxy] << std::endl;
-
-		}
-	}
-	TChain* c = new TChain("Events");
-	std::string datapath[8] = {path+"/Parking1D0_fullPF",path+"/Parking1D1_fullPF",path+"/Parking1D2_fullPF",path+"/Parking1D3_fullPF",path+"/Parking1D4_fullPF",path+"/Parking1D5_fullPF",path+"/Parking1D6_fullPF",path+"/Parking1D7_fullPF"};//,path+"/Parking1D8_fullPF",path+"/Parking1D9_fullPF"};///,"~/Analysis/data/HNLFlatTuples/Parking1A5","~/Analysis/data/HNLFlatTuples/Parking1A6";
-//	c->Add((datapath[0]+"/HNLFlat_*7.root").c_str());
-	c->Add((datapath[0]+"/*.root").c_str());
-	std::cout << c->GetEntries() << std::endl;
-	c->Add((datapath[1]+"/*.root").c_str());
-	std::cout << c->GetEntries() << std::endl;
-	c->Add((datapath[2]+"/*.root").c_str());
-	std::cout << c->GetEntries() << std::endl;
-	c->Add((datapath[3]+"/*.root").c_str());
-	std::cout << c->GetEntries() << std::endl;
-	c->Add((datapath[4]+"/*.root").c_str());
-	std::cout << c->GetEntries() << std::endl;
-	c->Add((datapath[5]+"/*.root").c_str());
-	std::cout << c->GetEntries() << std::endl;
-	c->Add((datapath[6]+"/*.root").c_str());
-	std::cout << c->GetEntries() << std::endl;
-	c->Add((datapath[7]+"/*.root").c_str());
-	std::cout << c->GetEntries() << std::endl;
-//	c->Add((datapath[8]+"/*.root").c_str());
-	std::cout << c->GetEntries() << std::endl;
-//	c->Add((datapath[9]+"/*.root").c_str());
-/*	std::cout << c->GetEntries() << std::endl;
-
-	std::cout << c->GetEntries() << std::endl;
-*/	
+	ROOT::RDF::TH1DModel *  h_models[2];
+	h_models[0] = new ROOT::RDF::TH1DModel("h0","h1",40, 1, 7);
+	h_models[1] = new ROOT::RDF::TH1DModel("h1","h1",4,0,4);
 	std::string INPATH = "/cmshome/ratramon/Analysis/data/HNLFlatTuples/";
 	//std::string InDataset[nDataset] = {"QCD_Pt15_20","QCD_Pt20_30","QCD_Pt30_50","QCD_Pt50_80","QCD_Pt80_120","QCD_Pt80_120_ext","QCD_Pt120_170","QCD_Pt120_170_ext","QCD_Pt170_300"};
-	std::string InDataset[nDataset] = {"Pt-15to20_noTrk","Pt-20to30_noTrk","Pt-30to50_noTrk","Pt-50to80_noTrk","Pt-80to120_noTrk","Pt-80to120_ext_noTrk","Pt-120to170_noTrk","Pt-120to170_ext_noTrk","Pt-170to300_noTrk"};
+	std::string InDataset[nDataset] = {"Pt-15to20","Pt-20to30","Pt-30to50","Pt-50to80","Pt-80to120","Pt-80to120_ext","Pt-120to170","Pt-120to170_ext","Pt-170to300"};
+
+	//qcd sample weights 
 	double QCDweights[nDataset];
 	std::ifstream infile("/cmshome/ratramon/Analysis/plugins/QCDWeights.txt");
 	if (infile.is_open()){
@@ -369,6 +399,10 @@ int Data_ABCD(std::string path,int SameSign, bool SuperQCD,bool MassWindow,doubl
 		}
 	}
 
+	
+	TH1D* hnlMass[Channels][LxyBin][ABCD][2];
+//	TH1D* hnlLxy[Channels][ABCD][2];
+//	std::vector<ROOT::RDataFrame> d;
 	std::vector<TChain*> tree;
 	for (i=0;i<nDataset;i++){
 	        std::cout << INPATH+InDataset[i]+"/HNLFlat*.root" << std::endl;
@@ -380,110 +414,111 @@ int Data_ABCD(std::string path,int SameSign, bool SuperQCD,bool MassWindow,doubl
 		tree.push_back(ctemp);
 		
 	}
-	TH1D* hnlMass[nRegion][nChannel][nLxyBin];
-	TH1D* hnlMass_MC[nChannel][nLxyBin];
-	std::string sign;
-	std::string signSel;
-	int j =  channel;
 	
-	if (SameSign==0){
-	sign = "";
-	signSel = "&&  hnl_charge==0 && B_mass<7";
-	}
-	else if (SameSign==1){
-	sign = "SS";
-	signSel = "&& LepQProd>0 && hnl_charge==0 && B_mass<7 ";
-	}
-	else if (SameSign==2){
-	sign = "OS";
-	signSel= " &&  LepQProd<0 && hnl_charge==0 && B_mass<7 ";
-	}
-	double NsigmaUp, NsigmaDown;
-	for(int i = 0; i< nRegion; i++){
-			if (j==0){
-
-			NsigmaUp = 2;
-			NsigmaDown = 2;
 	
-			}else{
+	for(int sidx=0; sidx<2;sidx++){
+	for(int ch=0; ch<Channels;ch++){
+	for(int reg=0; reg<4;reg++){
 
-
-			NsigmaUp = 2;
-			NsigmaDown = 2;
-
-			}
-			for(int k = 0; k< nLxyBin; k++){
-			std::string Masstitle = ChannelLable[j]+"HNLMass_LxyBin"+std::to_string(k)+"_"+"Region_"+RegLable[i]+"_"+sign;
-			std::string hName = RegLable[i]+"_"+ChannelLable[j]+"_LxyBin"+std::to_string(k)+sign;
-			if (MassWindow)hnlMass[i][j][k]=new TH1D(("window_"+Masstitle).c_str(),("window_"+Masstitle).c_str(),1,mass-NsigmaDown*sigma[j][k],mass+NsigmaUp*sigma[j][k]);
-			else hnlMass[i][j][k]=new TH1D(("window_"+Masstitle).c_str(),("window_"+Masstitle).c_str(),100,0,6);
-			std::cout << "mass " << mass << " sigma " << sigma[j][k] << " interval " <<  mass-2*sigma[j][k]<< std::endl;
+  //              hnlLxy[ch][reg][sidx]= new TH1D();
+			for (i=0;i<nDataset;i++){
+		/*	std::string Lxyfilter;
+			if (sidx >0)Lxyfilter = "LepQProd>0 &&  Type =="+std::to_string(ch)+" && "+RegCut[reg];
+			else Lxyfilter = "LepQProd<0 &&  Type =="+std::to_string(ch)+" && "+RegCut[reg];
+			std::string Lxytitle = ChannelLable[ch]+"HNL_LxyBin_"+"Region"+RegLable[reg]+SignLable[sidx]+RegLable[reg];
+			AddQCDToHist(i,QCDweights[i],d.at(i),Lxyfilter,"hnl_lxy",*h_models[1],hnlLxy[ch][reg][sidx],Lxytitle);
+		*/
+			for(int l=0; l<LxyBin;l++){
 			std::string Massfilter;
-			//if(j==0) Massfilter =" Type =="+std::to_string(j)+" && LxyBin =="+std::to_string(lxy_cuts[k])+" && "+RegCut[i]+signSel+" && fabs(hnl_l_mvaId)==1"+selection;
-			if( i==0 || i ==3) 
-			Massfilter =" Type =="+std::to_string(j)+" && "+/*std::to_string*/(lxy_cuts[k])+" && "+RegCut[i]+signSel+selection;
-			else if(i==1 || i ==2 ) Massfilter =" Type =="+std::to_string(j)+" && "+/*std::to_string*/(lxy_cuts[k])+" && "+RegCut[i]+signSel;
-			
-			if(j==0) Massfilter +=" && fabs(hnl_l_mvaId)==1";
-			std::cout << Massfilter<< std::endl;
-	//		if(i!=0){
-			c->Draw(("hnl_mass>>"+("window_"+Masstitle)).c_str(),Massfilter.c_str());
-		//	std::cout << "channel" << j  << "lxybin"<<k  << " " << mass-3*sigma[j][k] << " " <<mass+3*sigma[j][k] <<" "  <<hnlMass[i][j][k]->Integral()<<std::endl;
-	//		}
-			if (SuperQCD && i ==0){
-			for (int id=0;id<nDataset;id++){
-		//	std::cout << "MC"<< std::endl;
-			
-			if (id==0){
-			if(MassWindow)hnlMass_MC[j][k]=new TH1D(Masstitle.c_str(),Masstitle.c_str(),1,mass-NsigmaDown*sigma[j][k],mass+NsigmaUp*sigma[j][k]);
-			else hnlMass_MC[j][k]=new TH1D(Masstitle.c_str(),Masstitle.c_str(),100,0,6);
-			}
-		//	std::cout <<"ch" << j << "lxybin" << k <<  "mass " << mass << " sigma " << sigma[j][k] << " interval " <<  mass-2*sigma[j][k]<< std::endl;
-			AddQCDToHist(id,QCDweights[id],tree.at(id),Massfilter,"hnl_mass",hnlMass_MC[j][k],Masstitle, 0.76, mass, sigma[j][k],MassWindow,NsigmaUp, NsigmaDown);
-			
-			}
-			}
-			}
-		}
-	
+			if (sidx>0) Massfilter ="LepQProd>0 && Type =="+std::to_string(ch)+" && LxyBin =="+std::to_string(l)+" && "+RegCut[reg];
+			else  Massfilter ="LepQProd<0 && Type =="+std::to_string(ch)+" && LxyBin =="+std::to_string(l)+" && "+RegCut[reg];
+			std::string Masstitle = ChannelLable[ch]+"HNLMass_LxyBin"+std::to_string(l)+"_"+"Region"+RegLable[reg]+SignLable[sidx];
+		       	if (i==0)	hnlMass[ch][l][reg][sidx]= new TH1D(Masstitle.c_str(),Masstitle.c_str(),40,1,7);
+		//	if (i ==0 ) std::cout << Masstitle << std::endl;
+		//	AddQCDToHist(i,QCDweights[i],d.at(i),Massfilter,"hnl_mass",*h_models[0],hnlMass[ch][l][reg][sidx],Masstitle);
+			AddQCDToHist(i,QCDweights[i],tree.at(i),Massfilter,"hnl_mass",*h_models[0],hnlMass[ch][l][reg][sidx],Masstitle);
+		/*	if (i==0){	
+			d.at(i).Filter(("Type =="+std::to_string(ch)+" && LxyBin =="+std::to_string(l)+" && "+RegCut[reg]).c_str()).Histo1D(*h_models[0],"hnl_mass").GetValue().Copy(*hnlMass[ch][l][reg]);
+			hnlMass[ch][l][reg]->Scale(QCDweights[i]);		
+			std::cout << CR_hnlMass[ch][l]->GetEntries()<<std::endl;		
+			d.at(i).Filter(("Type =="+std::to_string(ch)+" && LxyBin =="+std::to_string(l)+" && "+CR_sel).c_str()).Histo1D({("CR_hnlLxy"+label).c_str(),("CR_hnlLxy"+label).c_str(),4u,0,4},"LxyBin").GetValue().Copy(*CR_hnlLxy[ch][l]);
+			CR_hnlLxy[ch][l]->Scale(QCDweights[i]);		
+			d.at(i).Filter(("Type =="+std::to_string(ch)+" && LxyBin =="+std::to_string(l)+" && " +SR_sel).c_str()).Histo1D({("SR_hnlMass"+label).c_str(),("SR_hnlMass"+label).c_str(),100u,0,7},"hnl_mass").GetValue().Copy(*SR_hnlMass[ch][l]);
+			SR_hnlMass[ch][l]->Scale(QCDweights[i]);		
+			d.at(i).Filter(("Type =="+std::to_string(ch)+" && LxyBin =="+std::to_string(l)+" && " +SR_sel).c_str()).Histo1D({("SR_hnlLxy"+label).c_str(),("SR_hnlLxy"+label).c_str(),4u,0,4},"LxyBin").GetValue().Copy(*SR_hnlLxy[ch][l]);
+			SR_hnlLxy[ch][l]->Scale(QCDweights[i]);		
 
-		if (unblinded){
-		for(int nBin = 1; nBin< hnlMass[0][j][0]->GetXaxis()->GetNbins()+1; nBin++){
-			for(int k = 0; k< nLxyBin; k++){
-		std::cout << hnlMass[0][j][k]->GetBinContent(nBin) << " "  << hnlMass[2][j][k]->GetBinContent(nBin)<< std::endl;
-		if(hnlMass[2][j][k]->GetBinContent(nBin)!=0 )hnlMass[0][j][k]->SetBinContent(nBin,1.0*hnlMass[3][j][k]->GetBinContent(nBin)*hnlMass[1][j][k]->GetBinContent(nBin)/(hnlMass[2][j][k]->GetBinContent(nBin)));	
-		std::cout << hnlMass[0][j][k]->GetBinContent(nBin)<< std::endl;
-		if(hnlMass[2][j][k]->GetBinContent(nBin)!=0 )hnlMass[4][j][k]->SetBinContent(nBin,1.0*hnlMass[1][j][k]->GetBinContent(nBin)/(hnlMass[2][j][k]->GetBinContent(nBin)));	
-		if(hnlMass[2][j][k]->GetBinContent(nBin)!=0 )hnlMass[0][j][k]->SetBinError(nBin,sqrt(pow(hnlMass[1][j][k]->GetBinError(nBin)*hnlMass[3][j][k]->GetBinContent(nBin)/hnlMass[2][j][k]->GetBinContent(nBin),2)+pow(hnlMass[3][j][k]->GetBinError(nBin)*hnlMass[1][j][k]->GetBinContent(nBin)/hnlMass[2][j][k]->GetBinContent(nBin),2)+pow(hnlMass[2][j][k]->GetBinError(nBin)*hnlMass[1][j][k]->GetBinContent(nBin)*hnlMass[3][j][k]->GetBinError(nBin)/pow(hnlMass[2][j][k]->GetBinContent(nBin),2),2)));	
-		if(hnlMass[2][j][k]->GetBinContent(nBin)!=0 )hnlMass[4][j][k]->SetBinError(nBin,sqrt(pow(hnlMass[1][j][k]->GetBinError(nBin)/hnlMass[2][j][k]->GetBinContent(nBin),2)+pow(hnlMass[2][j][k]->GetBinError(nBin)*hnlMass[1][j][k]->GetBinContent(nBin)/pow(hnlMass[2][j][k]->GetBinContent(nBin),2),2)));	
-			
+		}else if (i>0){
+			TH1D * temp = new TH1D();
+			d.at(i).Filter(("Type =="+std::to_string(ch)+" && LxyBin =="+std::to_string(l)+" && "+CR_sel).c_str()).Histo1D({("CR_hnlMass"+label).c_str(),("CR_hnlMass"+label).c_str(),100u,0,7},"hnl_mass").GetValue().Copy(*temp);
+			temp->Scale(QCDweights[i]);		
+			CR_hnlMass[ch][l]->Add(temp);
+			d.at(i).Filter(("Type =="+std::to_string(ch)+" && LxyBin =="+std::to_string(l)+" && "+ CR_sel).c_str()).Histo1D({("CR_hnlLxy"+label).c_str(),("CR_hnlLxy"+label).c_str(),4u,0,4},"LxyBin").GetValue().Copy(*temp);
+			temp->Scale(QCDweights[i]);		
+			CR_hnlLxy[ch][l]->Add(temp);
+			d.at(i).Filter(("Type =="+std::to_string(ch)+" && LxyBin =="+std::to_string(l)+" && "+ SR_sel).c_str()).Histo1D({("SR_hnlMass"+label).c_str(),("SR_hnlMass"+label).c_str(),100u,0,7},"hnl_mass").GetValue().Copy(*temp);
+			temp->Scale(QCDweights[i]);		
+			SR_hnlMass[ch][l]->Add(temp);
+			d.at(i).Filter(("Type =="+std::to_string(ch)+" && LxyBin =="+std::to_string(l)+" && "+ SR_sel).c_str()).Histo1D({("SR_hnlLxy"+label).c_str(),("SR_hnlLxy"+label).c_str(),4u,0,4},"LxyBin").GetValue().Copy(*temp);
+			temp->Scale(QCDweights[i]);		
+			SR_hnlLxy[ch][l]->Add(temp);
 
-			}	
-	
-	}	
-	}
-	std::ofstream bkg;
-	bkg.open((wd+"/BkgYields_.txt").c_str());
-	for(int i = 0; i< nRegion; i++){
-		for(int k = 0; k< nLxyBin; k++){
-//	hnlMass[i][j][k]->Scale(41.6/1.79);
-	SavePlot ("HNL Mass(GeV)", hnlMass[i][j][k], (wd+"/ABCDplots/"+std::string(hnlMass[i][j][k]->GetName())).c_str(), false, NULL, false);
-
-	if (i==4 || i==0 ) hnlMass[i][j][k]->SaveAs((wd+"/ABCDplots/"+std::string(hnlMass[i][j][k]->GetName())+".root").c_str());
 		
-	if (i==0){
-	double integ;
-	double error;
-	integ = hnlMass[i][j][k]->IntegralAndError(1,1,error);
-	bkg << j  << " " << k  << " " << integ << " " << error <<std::endl;
-	hnlMass_MC[j][k]->Scale(1.0*hnlMass[i][j][k]->Integral()/hnlMass_MC[j][k]->Integral());
-	RatioPlot ("HNL Mass(GeV)", hnlMass_MC[j][k],hnlMass[i][j][k],(wd+"/ABCDplots/DataVsQCD_"+std::string(hnlMass[i][j][k]->GetName())).c_str(), false, 1.1);	
+
+
+		
+		}*/
+		}
+		
+		}
+
+	
+	for(int l=0; l<LxyBin;l++){
+	SavePlot ("HNL mass(GeV)", hnlMass[ch][l][reg][sidx], ("ABCDplots/"+std::string(hnlMass[ch][l][reg][sidx]->GetName())).c_str(), false, NULL, false);	
 	}
+//	SavePlot ("HNL Lxy(GeV)", hnlLxy[ch][reg][sidx], ("ABCDplots/"+std::string(hnlLxy[ch][reg][sidx]->GetName())).c_str(), false, NULL, false);	
+//	std::cout<< "______________filename "<< hnlLxy[ch][reg][sidx]->GetName()<< std::endl;	
 	}
 	
+	for(int l=0; l<LxyBin;l++){
+		hnlMass[ch][l][4][sidx]= new TH1D("","",40,1,7);
+		hnlMass[ch][l][4][sidx]->SetName((ChannelLable[ch]+"HNLMass_LxyBin"+std::to_string(l)+"_"+"Region"+RegLable[4]+"_"+SignLable[sidx]).c_str());
+		hnlMass[ch][l][4][sidx]->SetTitle((ChannelLable[ch]+"HNLMass_LxyBin"+std::to_string(l)+"_"+"Region"+RegLable[4]+"_"+SignLable[sidx]).c_str());
+		for (int nBin=1; nBin<hnlMass[ch][l][0][sidx]->GetXaxis()->GetNbins();nBin++){
+		if(hnlMass[ch][l][2][sidx]->GetBinContent(nBin)!=0 )hnlMass[ch][l][4][sidx]->SetBinContent(nBin,1.0*hnlMass[ch][l][1][sidx]->GetBinContent(nBin)*hnlMass[ch][l][3][sidx]->GetBinContent(nBin)/hnlMass[ch][l][2][sidx]->GetBinContent(nBin));	
+		if(hnlMass[ch][l][2][sidx]->GetBinContent(nBin)!=0 )hnlMass[ch][l][4][sidx]->SetBinError(nBin,sqrt(pow(hnlMass[ch][l][1][sidx]->GetBinError(nBin)*hnlMass[ch][l][3][sidx]->GetBinContent(nBin)/hnlMass[ch][l][2][sidx]->GetBinContent(nBin),2)+pow(hnlMass[ch][l][3][sidx]->GetBinError(nBin)*hnlMass[ch][l][1][sidx]->GetBinContent(nBin)/hnlMass[ch][l][2][sidx]->GetBinContent(nBin),2)+pow(hnlMass[ch][l][1][sidx]->GetBinError(nBin)*hnlMass[ch][l][3][sidx]->GetBinContent(nBin)*hnlMass[ch][l][2][sidx]->GetBinError(nBin)/pow(hnlMass[ch][l][2][sidx]->GetBinContent(nBin),2),2)));	
+	}
+	std::cout << "________________________bin content " << hnlMass[ch][l][4][sidx]->GetBinContent(1) <<" numerator " << hnlMass[ch][l][1][sidx]->GetBinContent(1)*hnlMass[ch][l][3][sidx]->GetBinContent(1) << " denominator " << hnlMass[ch][l][2][sidx]->GetBinContent(1) <<  " " << (float)1.0*hnlMass[ch][l][1][sidx]->GetBinContent(1)*hnlMass[ch][l][3][sidx]->GetBinContent(1)/(float)hnlMass[ch][l][2][sidx]->GetBinContent(1) <<  std::endl;
+	std::cout << hnlMass[ch][l][4][sidx]->GetEntries() <<std::endl;
+	SavePlot ("HNL mass(GeV)", hnlMass[ch][l][4][sidx], ("ABCDplots/"+std::string(hnlMass[ch][l][4][sidx]->GetName())).c_str(), false, NULL, false);	
 	}
 
-	return 1;
+/*	hnlLxy[ch][4][sidx]= new TH1D("","",4,0,4);
+	for (int nBin=1; nBin<hnlLxy[0][4][sidx]->GetXaxis()->GetNbins();nBin++){
+		hnlLxy[ch][4][sidx]->SetBinContent(nBin,1.0*hnlLxy[ch][1][sidx]->GetBinContent(nBin)*hnlLxy[ch][3][sidx]->GetBinContent(nBin)/hnlLxy[ch][2][sidx]->GetBinContent(nBin));	
+		if(hnlLxy[ch][2][sidx]->GetBinContent(nBin)!=0 )hnlLxy[ch][4][sidx]->SetBinError(nBin,sqrt(pow(hnlLxy[ch][1][sidx]->GetBinError(nBin)*hnlLxy[ch][3][sidx]->GetBinContent(nBin)/hnlLxy[ch][2][sidx]->GetBinContent(nBin),2)+pow(hnlLxy[ch][3][sidx]->GetBinError(nBin)*hnlLxy[ch][1][sidx]->GetBinContent(nBin)/hnlLxy[ch][2][sidx]->GetBinContent(nBin),2)+pow(hnlLxy[ch][1][sidx]->GetBinError(nBin)*hnlLxy[ch][3][sidx]->GetBinContent(nBin)*hnlLxy[ch][2][sidx]->GetBinError(nBin)/pow(hnlLxy[ch][2][sidx]->GetBinContent(nBin),2),2)));	
+	}
+	hnlLxy[ch][4][sidx]->SetName((ChannelLable[ch]+"HNL_LxyBin_"+"Region"+RegLable[4]+"_"+SignLable[sidx]).c_str());
+	hnlLxy[ch][4][sidx]->SetTitle((ChannelLable[ch]+"HNL_LxyBin_"+"Region"+RegLable[4]+"_"+SignLable[sidx][sidx]).c_str());
+	SavePlot ("HNL Lxy(GeV)", hnlLxy[ch][4][sidx], ("ABCDplots/"+std::string(hnlLxy[ch][4][sidx]->GetName())).c_str(), false, NULL, false);	
+	
+	RatioPlot ("HNL Lxy(GeV)",hnlLxy[ch][0][sidx],hnlLxy[ch][4][sidx], ("ABCDplots/super_"+std::string(hnlLxy[ch][4][sidx]->GetName())).c_str(), false,1.1);	
+	*/
+	double scale;
+	for(int l=0; l<LxyBin;l++){
+	std::cout << hnlMass[ch][l][0][sidx]->GetEntries()<< std::endl;
+	if (l==0 || l==3) scale = 1.2;
+	else scale = 3;
+	RatioPlot ("HNL Mass(GeV)",hnlMass[ch][l][0][sidx],hnlMass[ch][l][4][sidx], ("ABCDplots/super_"+std::string(hnlMass[ch][l][4][sidx]->GetName())).c_str(), false, scale);	
+	}
+
+
 }
+}
+	//hnlMass[0][0][0]->SaveAs("histTest.root");
+//	hnlMass[0][0][4][sidx]->SaveAs("histTest_Mock.root");
+return 1;
+}
+
 
 
