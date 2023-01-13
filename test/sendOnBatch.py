@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 import os
 import sys
 import time
@@ -22,6 +21,7 @@ queue = "cmsan"
 
 pwd = os.environ['PWD']
 
+print("here")
 outdir = "~/Analysis/data/HNLFlatTuples/" + prodName + "/"
 os.system("mkdir " + outdir) 
 
@@ -37,11 +37,11 @@ os.system("mkdir -p "+dir+"/src/")
 inputfiles = glob.glob(inputdir+"/*.root")
 ijob=0
 
-
+#print(len(inputfiles))
 while (len(inputfiles) > 0):
 
    outfile = outdir+"/HNLFlat_"+str(ijob)+".root"
-    
+   #print(outfile) 
    outputname = dir+"/input/lbsubmit_" + str(ijob) + ".sh"
    outputfile = open(outputname,'w')
    outputfile.write('#!/bin/bash\n')
@@ -49,13 +49,16 @@ while (len(inputfiles) > 0):
    outputfile.write('cd ~/CMSSW_10_2_15/src; eval `scramv1 runtime -sh` ; cd -\n')
    outputfile.write('cd ~/Analysis/python\n')
    fout = ''
-   for ntp in range(0,min(ijobmax,len(inputfiles))):
+   for ntp in range(0,min(ijobmax,len(inputfiles))):#len(inputfiles))):
       ntpfile = inputfiles.pop()
       if ntpfile != '':
-          fout += ntpfile+' ' 
-   outputfile.write('python HNL_dataSel.py 0 '+outfile+' ' + fout +'\n')
+          fout += ntpfile+' '
+	  #print(fout) 
+   outputfile.write('python HNL_dataSel.py 0 '+outfile+' 3 10 1 ' + fout +'\n')
+   #outputfile.write('python BkgStudies.py '+outfile+' ' + fout +'\n')
    outputfile.write('cd -\n')
    outputfile.close()
+   #print(len(inputfiles))
 #      with open(cfgname, "wt") as fout:
 #         for line in fin:
 #           if 'XXXOUTFILE' in line:
@@ -87,9 +90,9 @@ while (len(inputfiles) > 0):
 
    bsubcmd = "bsub -q "+queue+" -o "+pwd+"/"+dir+"/log/log_"+str(ijob)+".log -J "+prodName+"_"+str(ijob)+" source "+pwd+"/"+outputname
 
-   os.system("echo " + bsubcmd)
-   os.system(bsubcmd)
+   #print(bsubcmd)
 
+   os.system(bsubcmd)
    ijob = ijob+1
     ##time.sleep(2.)
    continue
