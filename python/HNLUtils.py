@@ -1,4 +1,5 @@
-import os 
+import os
+import json 
 os.sys.path.insert(1,"~/Analysis/python/")
 from decays import HNLDecays,Decays
 
@@ -152,13 +153,35 @@ def SigYield(acceptance,lumi,HNLMass,HNLctau,filter_eff):
     br_NtoEPi =BR_HNLelepion(HNLMass) 
     Nsig = acceptance*2 * ProcessedLumi * Xsec_b/f_u*(br_MuNuInclusive *   v2   *  br_NtoMuPi)  * filter_eff
     print(Nsig)
-vv = getVV(3,100,True)
-print(vv)
+
+def sigPars(mass,cat):
+
+    with open('/cmshome/ratramon/Analysis/data/sig_par.txt','r') as f:
+	pars = f.read()
+
+    pars = json.loads(pars)
+
+    mean = pars[cat]['mean'][1]*mass + pars[cat]['mean'][0]
+    sigma = pars[cat]['sigma'][1]*mass + pars[cat]['sigma'][0]
+    alpha1 = 1.2
+    n1 = 2.5
+    alpha2 = 1.5
+    n2 = 4.0
+    print mean, sigma
+    return mean,sigma,alpha1,n1,alpha2,n2
+
+#vv = getVV(2,300,True)
+#ctau = getCtau(4.5,0.002625,True)
+
+#print ctau
+#sigPars(2.0,'lxysig0to50_SS')
+
 #br_mu= BR_HNLmupion(1)
 #br_e= BR_HNLmupion(1)
 #print("BR electrons %f,BR muons %f"%(br_e,br_mu))
-print(BToMuX(1))
-print(BToEX(1))
-print(BToMuX_partialBR(2))
-print(BToEX_partialBR(2))
-SigYield(0.044,41.6,3,100,0.193)
+#print(BToMuX(3))
+print(BToEX(3))
+print(BToEX(4))
+#print(BToMuX_partialBR(2))
+#print(BToEX_partialBR(2))
+#SigYield(0.044,41.6,3,100,0.193)
