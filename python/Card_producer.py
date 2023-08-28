@@ -1,5 +1,5 @@
 #Datacards producer
-
+import os
 import sys
 from ctypes import *
 import ROOT
@@ -67,31 +67,29 @@ def prefit_fromCard(Nsig,mass,ctau,sig,bkg,sigma,category,Bc):
 	print label
 	c.SaveAs(label)
 
-HNLMass = np.float(sys.argv[3])
-HNLctau = np.float(sys.argv[4])
+HNLMass = np.float(sys.argv[2])
+HNLctau = np.float(sys.argv[3])
 sigmas = ["0.010","0.013","0.017","0.025","0.035","0.035"]
 masses = [1,1.5,2,2.2,3,4.5,5]
 enhanceFactors = [1,1,1,1,1,1]
 sigma = 0.0014 +0.0074 * HNLMass
-channel = sys.argv[6]
-lumi =np.float( sys.argv[7])
-lxy_in = sys.argv[9]
-sig_in = sys.argv[10]
+channel = sys.argv[5]
+lumi =np.float( sys.argv[6])
+lxy_in = sys.argv[8]
+sig_in = sys.argv[9]
 qsign = ["OS","SS"]
-wd = sys.argv[5]
-fname =sys.argv[1]
-fbkg =sys.argv[2]
-counting =np.int(sys.argv[8]) 
-doDirac =np.int(sys.argv[9])
+wd = sys.argv[4]
+n = len(sys.argv)
+fname = sys.argv[11:n]
+fbkg =sys.argv[1]
+counting =np.int(sys.argv[7]) 
+#doDirac =np.int(sys.argv[10])
  
 print(counting)
 Bc = False
-if doDirac:
-	 qsign = ["OS"]
-
+blind = False
 genEvts= "/cmshome/ratramon/Analysis/python/genEvts.txt" 
-sigFeatures = np.loadtxt(wd+"/"+fname) 
-print(sigFeatures)
+#print(sigFeatures)
 # array contains 4 columns:  signal channel, displacement category,MC signal yield,MC yield error,MC mean, MC sigma
 if counting==1:
  bkgYields = np.loadtxt(wd+fbkg)
@@ -111,23 +109,21 @@ bkgYields = np.zeros((3,4)) #
 channels = ["Mu","PF","LowPt","Track"]
 lxy = ["LxySUnder50","LxySOver50Under150","LxySOver150"]
 otherlxy = ["lxysig0to50","lxysig50to150","lxysiggt150"]
-corr_pNN = [1.,0.76,1]
+corr_pNN = [1.,1,1]
 syst_pNN = [1.15,1.05,1.10]
 
 with open(genEvts) as fGen:
 	hnl_gen = fGen.readlines()
 			
 		
-Xsec_b = 472.8 * pow(10,9) #fb
+Xsec_b = 572.0 * pow(10,9) #fb
 f_u = 0.4
 f_c = 0.00261 
-br_MuNuInclusive = BToMuX(HNLMass,1)
-br_ENuInclusive = BToEX(HNLMass,1)
-print(br_MuNuInclusive)
+
 v2 = getVV(HNLMass,HNLctau,True)
-print(v2)
 br_NtoEPi =BR_HNLmupion(HNLMass) 
 br_NtoMuPi =BR_HNLelepion(HNLMass) 
+
 if 'Bc' in wd:
 	Bc = True 
 #d = ROOT.RDataFrame("Events","../data/Bsidebands/*.root")
@@ -136,14 +132,19 @@ if 'Bc' in wd:
 FullLumi = 41.6 #fb -1
 ProcessedLumi = lumi #fb -1
 lhe_eff = 0.08244
+oldNorm = False
 if Bc:
  B_c = 'Bc_'
+ Bs = ['Bc_']
  ff = f_u 
  br_MuNuInclusive = BcToMuX(HNLMass,1)
  br_ENuInclusive = BcToEX(HNLMass,1)
 else:
  B_c = ''
+ Bs = ['Bu_','Bd_','Bs_']
  ff = f_u
+if oldNorm:
+	Bs = ['']
 print "do Bc samples",Bc
 f = open("plot.txt", "a")
 if HNLMass == 3.0:
@@ -167,19 +168,14 @@ for j in range(start,len(lxy)):
 #	v2 = getVV(HNLMass,sigFeatures[j][1],True)	
 	category =lxy_in+"_"+sig_in 
    #  	filename =(wd+"/Datacards/HNL_m_"+str(HNLMass)+"_ctau_"+str(HNLctau)+"_"+str(channel)+"_"+str(lxy[j])+"_"+qsign[k]+".txt")
-     	filename ='{}/Datacards/HNL_m_{}_ctau_{}_cat_{}_{}.txt'.format(wd,'{:.2f}'.format(HNLMass).replace('.','p'),('{:.3f}'.format(HNLctau)).replace('.','p'),otherlxy[j],qsign[k])
+     	filename ='{}/Datacards/HNL_m_{}_ctau_{}_cat_{}_{}.txt'.format(wd,'{:.2f}'.format(HNLMass).replace('.','p'),('{:.4f}'.format(HNLctau)).replace('.','p'),otherlxy[j],qsign[k])
 	print filename
 #	bkgfile = wd+"/../Background/DiscreteProfiling/window_m"+str(int(HNLMass))+".0_s"+str(sigma)+"_ns10/ws/CMS-BHNL_multipdf_"+otherlxy[j]+"_"+qsign[k]+".root"
-	bkgfile = '{}/../Background/DiscreteProfiling/window_m{:.2f}_s{:.3f}_ns10/ws/workspace_multipdf_bhnl_m_{}_cat_{}_{}{}.root'.format(wd,float(HNLMass),float(sigma),'{:.2f}'.format(HNLMass).replace('.','p'),otherlxy[j],qsign[k],B_c)
-	sigfile = '{}/SigFits/workspace_signal_{}bhnl_m_{}_ctau_{}_cat_{}_{}.root'.format(wd,B_c,'{:.2f}'.format(HNLMass).replace('.','p'),('{:.3f}'.format(HNLctau)).replace('.','p'),otherlxy[j],qsign[k]) 
-	bkg = ROOT.TFile.Open(bkgfile)	
-	sig = ROOT.TFile.Open(sigfile)
-	
-	if "signal" in str(sig):
-		print  "sig shape found!"
+	if Bc:
+		bkgfile = '{}/../Background/DiscreteProfiling/window_m{:.2f}_s{:.3f}_ns10/ws/workspace_multipdf_bhnl_m_{}_cat_{}_{}{}.root'.format(wd,float(HNLMass),float(sigma),'{:.2f}'.format(HNLMass).replace('.','p'),otherlxy[j],qsign[k],"Bc_")
 	else:
-		print "signal not found - low stats bin  will not build datacard for this bin"
-		continue 
+		bkgfile = '{}/../Background/DiscreteProfiling/window_m{:.2f}_s{:.3f}_ns10/ws/workspace_multipdf_bhnl_m_{}_cat_{}_{}{}.root'.format(wd,float(HNLMass),float(sigma),'{:.2f}'.format(HNLMass).replace('.','p'),otherlxy[j],qsign[k],"")
+	bkg = ROOT.TFile.Open(bkgfile)	
 	flag  = str(bkg.Get("multipdf"))
 	if "multipdf" in flag:
 		print  "multipdf found!"
@@ -195,27 +191,48 @@ for j in range(start,len(lxy)):
 	else:
 		Yield = 1
 #	print(Yield)
-	if sigFeatures[3]==-1 or sigFeatures[2]==0: 
-		continue
-#	#signal yield is computed here WITHOUT CHOOSING A SPECIFIC COUPLING SCENARIO--for the coupling scenario choice see..
-	
-	if channel == "Tracks":
-		#        channel reco efficiency    *   lumi   *   sigmaB  *  BR(B->MuNuX)   * |V|eff *  BR(N->epi) * filter_eff
-		Nsig = sigFeatures[2*j+k][2]/1  * ProcessedLumi * Xsec_b/f_u*br_MuNuInclusive *   v2   * br_NtoEPi   * filter_eff
-	else:
-		#        channel reco efficiency    *   lumi   *   sigmaB  *  BR(B->MuNuX)   * |V|eff *  BR(N->epi) * filter_eff
-		if doDirac:
-			sigEntries =2* 1.2* sigFeatures[2]*corr_pNN[j]
-		else:
-			sigEntries =1.2* sigFeatures[2]*corr_pNN[j]
-			
-			#elif (len(sigFeatures) == 0 and sigFeatures[6]==2*j+k):
-				#sigEntries = sigFeatures[2]
-		print sigEntries			 
-		Nsig =  sigEntries * FullLumi * Xsec_b/ff* (br_MuNuInclusive *   v2   *  br_NtoEPi+br_ENuInclusive *   v2   *  br_NtoMuPi)
+	Nsig = 0
 
-		print "Nsig ", Nsig 
- 	
+	Nevents =0  
+	for idx,B in enumerate(Bs):
+		br_MuNu = BToMuX(HNLMass,1,B)
+		br_ENu = BToEX(HNLMass,1,B)
+		print br_MuNu,br_ENu
+		print BcToMuX(HNLMass,1),BcToEX(HNLMass,1)
+		if Bc:
+			sigfile = '{}/SigFits/workspace_signal_{}bhnl_m_{}_ctau_{}_cat_{}_{}.root'.format(wd,'Bc_','{:.2f}'.format(HNLMass).replace('.','p'),('{:.4f}'.format(HNLctau)).replace('.','p'),otherlxy[j],qsign[k]) 
+		else:
+			sigfile = '{}/SigFits/workspace_signal_{}bhnl_m_{}_ctau_{}_cat_{}_{}.root'.format(wd,'Bu_','{:.2f}'.format(HNLMass).replace('.','p'),('{:.4f}'.format(HNLctau)).replace('.','p'),otherlxy[j],qsign[k]) 
+		sig = ROOT.TFile.Open(sigfile)
+
+		if "signal" in str(sig):
+			print  "sig shape found!"
+		else:
+			print "signal not found - low stats bin  will not build datacard for this bin"
+			continue
+ 
+		featPath =  wd+"/"+str(fname[idx].strip("[,]"))
+		print fname,featPath
+#		else: 
+#			print fname
+#			featPath =  wd+"/"+str(fname.strip("[,]"))
+#			print fname,featPath
+		if os.path.isfile(featPath):
+			sigFeatures = np.loadtxt(featPath) 
+			print featPath
+		else:
+			continue
+		if sigFeatures[3]==-1 or sigFeatures[2]==0: 
+			continue
+	#signal yield is computed here WITHOUT CHOOSING A SPECIFIC COUPLING SCENARIO--for the coupling scenario choice see..
+
+		sigEntries =1.2* sigFeatures[2]*corr_pNN[j] #1.2 for MC matching corrections + pNN correction applied flat for different B flavs 
+		
+		print sigEntries			 
+		Nsig = Nsig + sigEntries * FullLumi * Xsec_b/ff* (br_MuNu *   v2   *  br_NtoEPi+br_ENu *   v2   *  br_NtoMuPi)
+		Nevents = Nevents+sigFeatures[6]	
+	print "Nsig ", Nsig 
+ 	rate = Nsig/Nevents
 	#prefit_fromCard(Nsig,HNLMass,HNLctau,sig,bkg,sigma,otherlxy[j]+'_'+qsign[k],B_c) 
 	rsh = open(filename, "w")
  	if counting==1:
@@ -228,7 +245,6 @@ for j in range(start,len(lxy)):
  	if  counting==0 :
  	  rsh.write("----------------------------------------------------------------------------------------------------------------------------------------------------\n")
  	  rsh.write("shapes signal m%s_ctau%s_%s_%s_%s_%s %s w:signal\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c,sigfile))
-          
  	  rsh.write("shapes background m%s_ctau%s_%s_%s_%s_%s %s multipdf:CMS_hgg_%s_%s%s_2018_13TeV_bkgshape\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c,bkgfile,otherlxy[j],qsign[k],B_c))
 	  if veto:
  	 	 rsh.write("shapes veto m%s_ctau%s_%s_%s_%s_%s %s multipdf:gaus_veto\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c,bkgfile))
@@ -236,7 +252,10 @@ for j in range(start,len(lxy)):
  	  rsh.write("shapes data_obs m%s_ctau%s_%s_%s_%s_%s %s multipdf:data_obs\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c,bkgfile))
  	rsh.write("----------------------------------------------------------------------------------------------------------------------------------------------------\n")
  	rsh.write("bin			m%s_ctau%s_%s_%s_%s_%s\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
- 	rsh.write("observation		-1\n") #blinded
+ 	if blind:
+		rsh.write("observation		-1\n") #blinded
+	else:
+	 	rsh.write("observation		%f\n"%multi.data('data_obs').sumEntries()) #blinded
  	rsh.write("----------------------------------------------------------------------------------------------------------------------------------------------------\n")
 	if veto:
 	 	rsh.write("bin  						m%s_ctau%s_%s_%s_%s_%s			m%s_ctau%s_%s_%s_%s_%s		m%s_ctau%s_%s_%s_%s_%s\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c,HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c,HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
@@ -245,14 +264,16 @@ for j in range(start,len(lxy)):
  		rsh.write("rate   						%f			 		%f		%f\n"%(Nsig,Yield,Yield))
  		rsh.write("-----------------------------------------------------------------------------------------------------------------------------------------------------\n")
    #	rsh.write("lumi				  		lnN		1.025	 			 		-\n")
-  		rsh.write("syst_sig_trigger_sf				lnN		1.05	 			 		-				-\n")
-  		rsh.write("syst_sm_reso_model				lnN		1.10	 			 		-				-\n")
-  		rsh.write("syst_sig_muid_sf				lnN		1.01	 			 		-				-\n")
-  		rsh.write("syst_sig_eleid_sf				lnN		1.03	 			 		-				-\n")
-  		rsh.write("syst_sig_track_eff				lnN		1.05	 			 		-				-\n")
- # 		rsh.write("syst_sig_pheno				lnN		1.15	 			 		-\n")
-  		rsh.write("syst_sig_norm_m%s_ctau%s_%s_%s_%s_%s		lnN		1.15	 			 		-				-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
-  		rsh.write("syst_sig_sel_m%s_ctau%s_%s_%s_%s_%s		lnN		%f	 			 		-				-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c,syst_pNN[j]))
+  		rsh.write("syst_sig_trigger_sf_m%s_ctau%s_%s_%s_%s_%s				lnN		1.05	 			 		-				-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_muid_sf_m%s_ctau%s_%s_%s_%s_%s				lnN		1.01	 			 		-				-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_eleid_sf_m%s_ctau%s_%s_%s_%s_%s				lnN		1.03	 			 		-				-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_track_eff_m%s_ctau%s_%s_%s_%s_%s				lnN		1.05	 			 		-				-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_shape_m%s_ctau%s_%s_%s_%s_%s				lnN		1.15	 	-		 		-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_stat_m%s_ctau%s_%s_%s_%s_%s		gmN %d		%f	 			 		-				-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c,Nevents,rate))
+  		rsh.write("syst_sig_genmatch_m%s_ctau%s_%s_%s_%s_%s				lnN		1.05 			 		-		-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_sel_m%s_ctau%s_%s_%s_%s_%s		lnN		1.15	 		-	-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_norm		lnN		1.15	 			 		-				1.15\n")
+  		rsh.write("syst_sig_fc   		lnN		%f	 			 		-				-\n"%(1.0 if not Bc else 1.24))
  # 	rsh.write("syst_bkg_m%s_ctau%s_%s_%s_%s		lnN		-	 			 		1.1\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k]))
   	else:
 	 	rsh.write("bin  						m%s_ctau%s_%s_%s_%s_%s			m%s_ctau%s_%s_%s_%s_%s\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c,HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
@@ -261,15 +282,16 @@ for j in range(start,len(lxy)):
  		rsh.write("rate   						%f			 		%f\n"%(Nsig,Yield))
  		rsh.write("-----------------------------------------------------------------------------------------------------------------------------------------------------\n")
    #	rsh.write("lumi				  		lnN		1.025	 			 		-\n")
-  		rsh.write("syst_sig_trigger_sf				lnN		1.05	 			 		-\n")
-  		rsh.write("syst_sig_muid_sf				lnN		1.01	 			 		-\n")
-  		rsh.write("syst_sig_eleid_sf				lnN		1.03	 			 		-\n")
-  		rsh.write("syst_sig_track_eff				lnN		1.05	 			 		-\n")
-  		rsh.write("syst_sig_shape				lnN		1.10	 			 		-\n")
- # 		rsh.write("syst_sig_pheno				lnN		1.15	 			 		-
-  		rsh.write("syst_sig_norm_m%s_ctau%s_%s_%s_%s_%s		lnN		1.15	 			 		-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
-  		rsh.write("syst_sig_sel_m%s_ctau%s_%s_%s_%s_%s		lnN		%f	 			 		-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c,syst_pNN[j]))
-
+  		rsh.write("syst_sig_trigger_sf_m%s_ctau%s_%s_%s_%s_%s				lnN		1.05	 		-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_muid_sf_m%s_ctau%s_%s_%s_%s_%s				lnN		1.01	 		-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_eleid_sf_m%s_ctau%s_%s_%s_%s_%s				lnN		1.03	 		-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_track_eff_m%s_ctau%s_%s_%s_%s_%s				lnN		1.05	 		-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_shape_m%s_ctau%s_%s_%s_%s_%s				lnN		1.15	 		-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_stat_m%s_ctau%s_%s_%s_%s_%s					gmN %d		%f	 		-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c,Nevents,rate))
+  		rsh.write("syst_sig_genmatch_m%s_ctau%s_%s_%s_%s_%s				lnN		1.05	 		-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_sel_m%s_ctau%s_%s_%s_%s_%s					lnN		1.15	 		-\n"%(HNLMass,HNLctau,channel,lxy[j],qsign[k],B_c))
+  		rsh.write("syst_sig_norm							lnN		1.15	 		-\n")
+  		rsh.write("syst_sig_fc						   		lnN		%f	 		-\n"%(1.0 if not Bc else 1.24))
 	rsh.write("-----------------------------------------------------------------------------------------------------------------------------------------------------\n")
  	if counting==1:
   	  rsh.write("m%s_ctau%s_%s_%s_%s autoMCStats 0 0 1\n"%(HNLMass,HNLctau,channel,lxy[j], qsign[k]))
