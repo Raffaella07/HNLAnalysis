@@ -123,7 +123,7 @@ CMS_lumi( TPad* pad, int iPeriod, int iPosX,double lumi )
 	{
 		char l[10];
 		sprintf(l, "%0.2f", lumi);
-		lumiText += std::string(l)+" fb-1 projected to 41.6 fb-1 Bparking" ;
+		lumiText += std::string(l)+" fb-1 B-parking";//projected to 41.6 fb-1 B-parking" ;
 	}
 
 	std::cout << lumiText << endl;
@@ -396,43 +396,52 @@ void limPlotter(std::string limFile,double mass ,double xlow, double xup, double
 
 	setStyle();
 	TH2D * plotter = new TH2D("plotter","plotter",10,xlow,xup,10,ylow,yup);
-
-	TGraph* line = new TGraph(limFile.c_str(),"%lg %lg lg lg lg lg  ");
-	TGraphAsymmErrors* g = new TGraphAsymmErrors(limFile.c_str(),"%lg %lg %lg %lg lg lg ");
-	TGraphAsymmErrors* o = new TGraphAsymmErrors(limFile.c_str(),"%lg %lg %*lg %*lg %lg %lg ");
+	TGraph* line_expected = new TGraph(limFile.c_str(),"%lg %lg lg lg lg lg lg ");
+	TGraph* line_observed = new TGraph(limFile.c_str(),"%lg %*lg %*lg %*lg %*lg %*lg %lg ");
+	TGraphAsymmErrors* g = new TGraphAsymmErrors(limFile.c_str(),"%lg %lg %lg %lg lg lg lg ");
+	TGraphAsymmErrors* o = new TGraphAsymmErrors(limFile.c_str(),"%lg %lg %*lg %*lg %lg %lg lg lg ");
 
 	TCanvas* c = new TCanvas("c","c",800,600);
 	gStyle->SetLegendBorderSize(0);
 	gStyle->SetLegendFillColor(0);
 	gStyle->SetLegendFont(42);
 	TF1 *scale = new TF1("scale",("y*"+std::to_string(ef)).c_str());
-        line->Apply(scale);
-        g->Apply(scale);
-        o->Apply(scale);
+     //   line->Apply(scale);
+      //  g->Apply(scale);
+      //  o->Apply(scale);
 	TLegend* l = new TLegend();
 	TLine* thr = new TLine(xlow,1,xup,1);
 	thr->SetLineWidth(2);
 	c->SetLogy();
 	c->SetLogx();
+	c->SetBottomMargin(0.25);
 //	plotter->GetXaxis()->SetTitle("|V|^{2}");
 //	plotter->GetXaxis()->SetTitle("Mass (GeV)");
-	plotter->GetXaxis()->SetTitle("#frac{|V_{#mu} V_{e}|^{2}}{|V|^{2}}");
-	plotter->GetYaxis()->SetTitle(" limit @ 95% C.L ");
-	line->SetLineColor(kRed);
-	line->SetLineWidth(2);
+	plotter->GetXaxis()->SetTitle("#frac{|V_{#mu} V_{e}|^{2}}{|V_{#mu}|^{2}+|V_{e}|^{2}}");
+	plotter->GetXaxis()->SetTitleOffset(1.8);
+	plotter->GetYaxis()->SetTitle(" 95% C.L limit on #mu");
+	line_expected->SetLineColor(kRed);
+//	line_expected->SetLineStyle(9);
+	line_observed->SetLineColor(kBlack);
+	line_observed->SetLineWidth(2);
+	line_expected->SetLineWidth(2);
 	g->SetFillColor(kGreen-3);
 	o->SetFillColor(kOrange);
-	l->AddEntry(line,"expected limit","l");
-	l->AddEntry(g,"#pm 1 #sigma","f");
-	l->AddEntry(o,"#pm 2 #sigma","f");
+	l->AddEntry(line_expected,"expected limit","l");
+	l->AddEntry(line_observed,"observed limit","l");
+	l->AddEntry(g,"68\% expected","f");
+	l->AddEntry(o,"95\% expected","f");
 	plotter->Draw();
 	o->Draw("same3");
 	g->Draw("same3");
-	line->Draw("sameL");
+	line_expected->Draw("sameL");
+	line_observed->Draw("sameL");
 	thr->Draw("same");	
 	l->Draw("same");
+	TLatex latex;
+	
 	gPad->RedrawAxis();
-	CMS_lumi( c, 5, 33, 4.91 );
+	CMS_lumi( c, 5, 33, 41.6 );
 	c->SaveAs(("CombinedLimits/Mass"+std::to_string(mass)+"_"+tag+"_"+channel+".pdf").c_str());
 
 
