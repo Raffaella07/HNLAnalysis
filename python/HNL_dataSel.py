@@ -34,12 +34,24 @@ class Event(TreeModel):
     QCDweight = FloatCol()
     LepQProd = IntCol()
     B_mass= FloatCol()
+    MuLPi_mass= FloatCol()
     B_pt= FloatCol()
     B_eta= FloatCol()
     B_phi= FloatCol()
+    is_Bu = FloatCol()
+    is_Bd = FloatCol()
+    is_Bs = FloatCol()
     TrgMu_pt= FloatCol()
     TrgMu_eta= FloatCol()
     TrgMu_phi= FloatCol()
+    TrgMu_relIso= FloatCol()
+    TrgMu_PixelHits= FloatCol()
+    TrgMu_PixelLayers= FloatCol()
+    TrgMu_TrackerLayers= FloatCol()
+    l0_pt = FloatCol()
+    l_pt = FloatCol()
+    l0_relIso = FloatCol()
+    l_relIso = FloatCol()
   #  B_l_dxy= FloatCol()
   #  B_l_dxyS= FloatCol()
   #  B_l_dz= FloatCol()
@@ -70,13 +82,14 @@ class Event(TreeModel):
     hnl_l_pt =  FloatCol()
     hnl_l_eta =  FloatCol()
     hnl_l_phi =  FloatCol()
+    hnl_l_relIso =  FloatCol()
     hnl_l_dz =  FloatCol()
     hnl_l_dzS =  FloatCol()
     hnl_l_dxy =  FloatCol()
     hnl_l_dxyS =  FloatCol()
     hnl_l_DCAS =  FloatCol()
     hnl_l_mvaId =  FloatCol()
-    hnl_l_nHits = FloatCol()
+    hnl_l_lostHits = FloatCol()
     hnl_pi_pt =  FloatCol()
     hnl_pi_eta =  FloatCol()
     hnl_pi_phi =  FloatCol()
@@ -85,7 +98,9 @@ class Event(TreeModel):
     hnl_pi_dxy =  FloatCol()
     hnl_pi_dxyS =  FloatCol()
     hnl_pi_DCAS =  FloatCol()
-    hnl_pi_nHits = FloatCol()
+    hnl_pi_PixelHits = FloatCol()
+    hnl_pi_PixelLayers = FloatCol()
+    hnl_pi_TrackerLayers = FloatCol()
     dphi_pi_fitpi = FloatCol()
     dilepton_mass = FloatCol()
     BlepPi_mass = FloatCol()
@@ -93,9 +108,9 @@ class Event(TreeModel):
     dilepton_pt = FloatCol()
     BlepPi_pt = FloatCol()
     likelihood = FloatCol()
-    nn_score = FloatCol()
-    nn_score_single = FloatCol()
-    bdt = FloatCol()
+#    nn_score = FloatCol()
+#    nn_score_single = FloatCol()
+#    bdt = FloatCol()
     toEle = IntCol()
     toMu = IntCol()
     PU_weight = FloatCol()
@@ -174,8 +189,48 @@ def sortBranches(l,full, chString):
 
 
 
+def MuMu_weight(mu0_trg,mu0_pt,mu0_dxyS,mu_trg,mu_pt,mu_dxyS):
 
+	hFile_mc= ROOT.TFile.Open("efficiency_mc.root")
+	hFile_data= ROOT.TFile.Open("efficiency_data.root")
 
+	mc_histo = hFile_mc.Get("hist_scale_factor")
+	data_histo = hFile_data.Get("hist_scale_factor")
+	if abs(mu0_dxyS) >500:
+		mu0_dxyS =499
+	if abs(mu_dxyS) >500:
+		mu_dxyS =499
+	
+	eff0_mc = mc_histo.GetBinContent(mc_histo.GetXaxis().FindBin(mu0_pt),mc_histo.GetYaxis().FindBin(abs(mu0_dxyS)))
+	eff0_data = data_histo.GetBinContent(data_histo.GetXaxis().FindBin(mu0_pt),data_histo.GetYaxis().FindBin(abs(mu0_dxyS)))
+	eff_mc = mc_histo.GetBinContent(mc_histo.GetXaxis().FindBin(mu_pt),mc_histo.GetYaxis().FindBin(abs(mu_dxyS)))
+	eff_data = data_histo.GetBinContent(data_histo.GetXaxis().FindBin(mu_pt),data_histo.GetYaxis().FindBin(abs(mu_dxyS)))
+ 	print "mu0",mu0_pt, mu0_dxyS
+ 	print eff0_mc,eff0_data
+ 	print "mu",mu_pt, mu_dxyS
+ 	print eff_mc,eff_data
+
+	if (mu0_trg and mu_trg):
+		if (eff0_mc*eff_mc >0):
+			return eff0_data*eff_data/eff0_mc*eff_mc
+		else:
+			return 0
+	elif (mu0_trg and not mu_trg):
+		if (eff0_mc*(1-eff_mc)>0):
+			return eff0_data*(1-eff_data)/eff0_mc*(1-eff_mc)
+		else:
+			return 0 
+	elif (mu_trg and not mu0_trg):
+		if(eff_mc*(1-eff0_mc)>0): 
+			return eff_data*(1-eff0_data)/eff_mc*(1-eff0_mc)
+		else:
+			return 0	
+	else:
+		if ((1-eff_mc)*(1-eff0_mc)>0):
+		
+			return (1-eff_data)*(1-eff0_data)/(1-eff_mc)*(1-eff0_mc)
+		else:
+			return 0 
 
 def TwoBodyMass(sig,pt1,eta1,phi1,mass1,pt2,eta2,phi2,mass2):
 
@@ -280,11 +335,16 @@ if __name__ == '__main__':
 	               "BToMuMuPi_hnl_mass","BToMuMuPi_hnl_pt","BToMuMuPi_sv_lxy","BToMuMuPi_hnl_cos2D","BToMuMuPi_sv_lxy_sig","BToMuMuPi_dr_mu_pi",
 	                "BToMuMuPi_dimu_vzdiff","BToMuMuPi_sv_prob","BToMuMuPi_sv_chi2","BToMuMuPi_sv_x","BToMuMuPi_sv_xe","BToMuMuPi_sv_y","BToMuMuPi_sv_ye","BToMuMuPi_sv_z","BToMuMuPi_sv_ze",
 	                "Muon_pt[BToMuMuPi_sel_mu_idx]","Muon_eta[BToMuMuPi_sel_mu_idx]","Muon_phi[BToMuMuPi_sel_mu_idx]","Muon_dz[BToMuMuPi_sel_mu_idx]","Muon_dzS[BToMuMuPi_sel_mu_idx]",
-	                "Muon_dxy[BToMuMuPi_sel_mu_idx]","Muon_dxyS[BToMuMuPi_sel_mu_idx]","Muon_softId[BToMuMuPi_trg_mu_idx]","Muon_looseId[BToMuMuPi_sel_mu_idx]",
+	                "Muon_dxy[BToMuMuPi_sel_mu_idx]","Muon_dxyS[BToMuMuPi_sel_mu_idx]","Muon_softId[BToMuMuPi_sel_mu_idx]","Muon_looseId[BToMuMuPi_sel_mu_idx]",
 	                "BToMuMuPi_pi_pt","BToMuMuPi_pi_eta","BToMuMuPi_pi_phi","BToMuMuPi_pi_dz","BToMuMuPi_pi_dzS",
-	                "BToMuMuPi_pi_dxy","BToMuMuPi_pi_dxyS","BToMuMuPi_pi_DCASig","BToMuMuPi_fit_pi_phi","BToMuMuPi_hnl_charge","Muon_charge[BToMuMuPi_sel_mu_idx]","Muon_charge[BToMuMuPi_trg_mu_idx]","BToMuMuPi_hnl_eta","BToMuMuPi_hnl_phi",
-	       		"BToMuMuPi_trgmu_mu_mass","BToMuMuPi_trgmu_mu_pt","Muon_mediumId[BToMuMuPi_trg_mu_idx]","BToMuMuPi_pi_ndof","BToMuMuPi_fit_mu_eta","BToMuMuPi_fit_mu_phi","BToMuMuPi_fit_mu_mass","Muon_isPF[BToMuMuPi_trg_mu_idx]","Muon_vx[BToMuMuPi_sel_mu_idx]","Muon_vy[BToMuMuPi_sel_mu_idx]","BToMuMuPi_hnl_ct",#,"GenPart_pdgId[Muon_genPartIdx[BToMuMuPi_trg_mu_idx]]","GenPart_pdgId[Muon_genPartIdx[BToMuMuPi_sel_mu_idx]]","GenPart_pdgId[ProbeTracks_genPartIdx[BToMuMuPi_pi_idx]]","GenPart_pdgId[GenPart_genPartIdxMother[Muon_genPartIdx[BToMuMuPi_trg_mu_idx]]]","GenPart_pdgId[GenPart_genPartIdxMother[Muon_genPartIdx[BToMuMuPi_sel_mu_idx]]]","GenPart_pdgId[GenPart_genPartIdxMother[ProbeTracks_genPartIdx[BToMuMuPi_pi_idx]]]"#, "BToMuMuPi_hnl_cos2D_star"
-	               "Muon_dz[BToMuMuPi_trg_mu_idx]","Muon_dxy[BToMuMuPi_trg_mu_idx]","Muon_dzS[BToMuMuPi_trg_mu_idx]","Muon_dxyS[BToMuMuPi_trg_mu_idx]","Muon_looseId[BToMuMuPi_trg_mu_idx]","Muon_softId[BToMuMuPi_sel_mu_idx]"
+	                "BToMuMuPi_pi_dxy","BToMuMuPi_pi_dxyS","BToMuMuPi_pi_DCASig_corr","BToMuMuPi_fit_pi_phi","BToMuMuPi_hnl_charge","Muon_charge[BToMuMuPi_sel_mu_idx]",
+			"Muon_charge[BToMuMuPi_trg_mu_idx]","BToMuMuPi_hnl_eta","BToMuMuPi_hnl_phi",
+	       		"BToMuMuPi_trgmu_mu_mass","BToMuMuPi_trgmu_mu_pt","Muon_softId[BToMuMuPi_trg_mu_idx]","BToMuMuPi_pi_ndof","BToMuMuPi_fit_mu_eta","BToMuMuPi_fit_mu_phi",
+			"BToMuMuPi_fit_mu_mass","Muon_isPF[BToMuMuPi_trg_mu_idx]","Muon_vx[BToMuMuPi_sel_mu_idx]","Muon_vy[BToMuMuPi_sel_mu_idx]","BToMuMuPi_hnl_ct",
+	                "Muon_dz[BToMuMuPi_trg_mu_idx]","Muon_dxy[BToMuMuPi_trg_mu_idx]","Muon_dzS[BToMuMuPi_trg_mu_idx]","Muon_dxyS[BToMuMuPi_trg_mu_idx]",
+			"Muon_looseId[BToMuMuPi_trg_mu_idx]","Muon_isTriggeringBPark[BToMuMuPi_trg_mu_idx]","BToMuMuPi_hnl_to_trgmu","Muon_pfiso03Rel_all[BToMuMuPi_trg_mu_idx]",
+			"Muon_pfiso03Rel_all[BToMuMuPi_sel_mu_idx]","Muon_isTriggeringBPark[BToMuMuPi_sel_mu_idx]"
+			#,"GenPart_pdgId[Muon_genPartIdx[BToMuMuPi_trg_mu_idx]]","GenPart_pdgId[Muon_genPartIdx[BToMuMuPi_sel_mu_idx]]","GenPart_pdgId[ProbeTracks_genPartIdx[BToMuMuPi_pi_idx]]","GenPart_pdgId[GenPart_genPartIdxMother[Muon_genPartIdx[BToMuMuPi_trg_mu_idx]]]","GenPart_pdgId[GenPart_genPartIdxMother[Muon_genPartIdx[BToMuMuPi_sel_mu_idx]]]","GenPart_pdgId[GenPart_genPartIdxMother[ProbeTracks_genPartIdx[BToMuMuPi_pi_idx]]]"#, "BToMuMuPi_hnl_cos2D_star"
 			]
 	
 	
@@ -293,15 +353,22 @@ if __name__ == '__main__':
 	               "Muon_pt[BToMuEPi_trg_mu_idx]","Muon_eta[BToMuEPi_trg_mu_idx]","Muon_phi[BToMuEPi_trg_mu_idx]",
 	               "BToMuEPi_hnl_mass","BToMuEPi_hnl_pt","BToMuEPi_sv_lxy","BToMuEPi_hnl_cos2D","BToMuEPi_sv_lxy_sig"," BToMuEPi_dilep_vydiff",
 	               "BToMuEPi_dilep_vzdiff","BToMuEPi_sv_prob","BToMuEPi_sv_chi2","BToMuEPi_sv_x","BToMuEPi_sv_xe","BToMuEPi_sv_y","BToMuEPi_sv_ye","BToMuEPi_sv_z","BToMuEPi_sv_ze",
-	               "Electron_pt[BToMuEPi_sel_ele_idx]","Electron_eta[BToMuEPi_sel_ele_idx]","Electron_phi[BToMuEPi_sel_ele_idx]","Electron_dz[BToMuEPi_sel_ele_idx]","Electron_dzErr[BToMuEPi_sel_ele_idx]",
+	               "Electron_pt[BToMuEPi_sel_ele_idx]","Electron_eta[BToMuEPi_sel_ele_idx]","Electron_phi[BToMuEPi_sel_ele_idx]","Electron_dz[BToMuEPi_sel_ele_idx]",
+			"Electron_dzErr[BToMuEPi_sel_ele_idx]",
 	               "Electron_dxy[BToMuEPi_sel_ele_idx]","Electron_dxyErr[BToMuEPi_sel_ele_idx]","Electron_pfmvaId[BToMuEPi_sel_ele_idx]","Electron_mvaId[BToMuEPi_sel_ele_idx]",
 	               "BToMuEPi_fit_pi_pt","BToMuEPi_fit_pi_eta","BToMuEPi_fit_pi_mass","BToMuEPi_pi_dz","BToMuEPi_pi_dzS",
-	               "BToMuEPi_pi_dxy","BToMuEPi_pi_dxyS","BToMuEPi_pi_DCASig","BToMuEPi_fit_pi_phi","BToMuEPi_hnl_charge","Electron_charge[BToMuEPi_sel_ele_idx]","Muon_charge[BToMuEPi_trg_mu_idx]","BToMuEPi_hnl_eta","BToMuEPi_hnl_phi"
-	,"BToMuEPi_dilepton_mass","BToMuEPi_dilepton_pt","Muon_softId[BToMuEPi_trg_mu_idx]","BToMuEPi_pi_ndof","BToMuEPi_fit_lep_mass","BToMuEPi_fit_lep_eta","BToMuEPi_fit_lep_phi","Electron_dzTrg[BToMuEPi_sel_ele_idx]","Electron_vx[BToMuEPi_sel_ele_idx]","Electron_vy[BToMuEPi_sel_ele_idx]","Muon_dz[BToMuEPi_trg_mu_idx]","Muon_dxy[BToMuEPi_trg_mu_idx]","Muon_dzS[BToMuEPi_trg_mu_idx]","Muon_dxyS[BToMuEPi_trg_mu_idx]","Muon_looseId[BToMuEPi_trg_mu_idx]","Muon_isTriggeringBPark[BToMuEPi_trg_mu_idx]","BToMuEPi_hnl_to_trgmu","BToMuEPi_hnl_ct"#,"BToMuEPi_matching_trg_mu_genIdx","BToMuEPi_matching_sel_lep_genIdx","BToMuEPi_matching_pi_genIdx","BToMuEPi_matching_trg_mu_motherPdgId","BToMuEPi_matching_sel_ele_motherPdgId","BToMuEPi_matching_pi_motherPdgId"
+	               "BToMuEPi_pi_dxy","BToMuEPi_pi_dxyS","BToMuEPi_pi_DCASig_corr","BToMuEPi_fit_pi_phi","BToMuEPi_hnl_charge","Electron_charge[BToMuEPi_sel_ele_idx]",
+			"Muon_charge[BToMuEPi_trg_mu_idx]","BToMuEPi_hnl_eta","BToMuEPi_hnl_phi",
+			"BToMuEPi_dilepton_mass","BToMuEPi_dilepton_pt","Muon_softId[BToMuEPi_trg_mu_idx]","BToMuEPi_pi_ndof","BToMuEPi_fit_lep_eta","BToMuEPi_fit_lep_phi",
+			"BToMuEPi_fit_lep_mass","Electron_dzTrg[BToMuEPi_sel_ele_idx]","Electron_vx[BToMuEPi_sel_ele_idx]","Electron_vy[BToMuEPi_sel_ele_idx]","BToMuEPi_hnl_ct",
+			"Muon_dz[BToMuEPi_trg_mu_idx]","Muon_dxy[BToMuEPi_trg_mu_idx]","Muon_dzS[BToMuEPi_trg_mu_idx]","Muon_dxyS[BToMuEPi_trg_mu_idx]",
+			"Muon_looseId[BToMuEPi_trg_mu_idx]","Muon_isTriggeringBPark[BToMuEPi_trg_mu_idx]","BToMuEPi_hnl_to_trgmu","Muon_pfiso03Rel_all[BToMuEPi_trg_mu_idx]",
+			"Electron_pfRelIso[BToMuEPi_sel_ele_idx]","Electron_trkRelIso[BToMuEPi_sel_ele_idx]","BToMuEPi_pi_numberOfValidPixelHits","BToMuEPi_pi_numberOfPixelLayers",
+			"BToMuEPi_pi_numberOfTrackerLayers","Electron_lostHits[BToMuEPi_sel_ele_idx]","Muon_numberOfValidPixelHits[BToMuEPi_trg_mu_idx]","Muon_numberOfPixelLayers[BToMuEPi_trg_mu_idx]","Muon_numberOfTrackerLayers[BToMuEPi_trg_mu_idx]",
+			"BToMuEPi_isBu","BToMuEPi_isBd","BToMuEPi_isBs"	
 	#,"BToMuEPi_hnl_cos2D_star"
 	        ]
 	
-	print(len(ele_branches))	
 	
 	tt_branches = ["BToMuEPiHD_mass","BToMuEPiHD_pt","BToMuEPiHD_eta","BToMuEPiHD_phi",
 	               "Muon_pt[BToMuEPiHD_trg_mu_idx]","Muon_eta[BToMuEPiHD_trg_mu_idx]","Muon_phi[BToMuEPiHD_trg_mu_idx]",
@@ -323,6 +390,8 @@ if __name__ == '__main__':
 	
 	
 	print "initialize list of input"
+	print(len(ele_branches))	
+	print(len(mu_branches))	
 	isQCD = int(sys.argv[1]) #to run on QCD (does not blind signal region)
 	isMC = int(sys.argv[5])#MC or not
 	do_orthogonal = False
@@ -341,7 +410,8 @@ if __name__ == '__main__':
 	#selections to keep only matched events in MC
 	
 	if datatype == 1:
-		mu_sig= "BToMuMuPi_isMatched==1 && "# &&  BToMuMuPi_hnl_charge ==0 "
+		mu_sig= "BToMuMuPi_isMatched "# &&  BToMuMuPi_hnl_charge ==0 "
+		#mu_sig= "BToMuMuPi_isMatched==1 && "# &&  BToMuMuPi_hnl_charge ==0 "
 		pf_sig= "BToMuEPi_isMatched ==1 &&  BToMuEPi_hnl_charge ==0 && Electron_isPF[BToMuEPi_sel_ele_idx] &&"
 		lowpT_sig= "BToMuEPi_isMatched==1 &&  BToMuEPi_hnl_charge ==0 && Electron_isLowPt[BToMuEPi_sel_ele_idx] && "
 		tt_sig= "BToMuEPiHD_hnl_charge ==0 && BToMuEPiHD_IsMatcheD && "
@@ -351,7 +421,7 @@ if __name__ == '__main__':
 	
 	elif datatype == 0:
 	
-		mu_sig= "  " 
+		mu_sig= " BToMuMuPi_mass>4.3 && BToMuMuPi_mass<4.5 && BToMuMuPi_hnl_charge==0 &&  " 
 		pf_sig=" " 
 		lowpT_sig="  Electron_isLowPt[BToMuEPi_sel_ele_idx]" 
 		tt_sig= "  "
@@ -365,7 +435,7 @@ if __name__ == '__main__':
 	#trigger 
 	trg_BPark_mu = "(Muon_fired_HLT_Mu7_IP4[BToMuMuPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu8_IP3[BToMuMuPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu8_IP5[BToMuMuPi_trg_mu_idx]==2 || Muon_fired_HLT_Mu9_IP6[BToMuMuPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu8p5_IP3p5[BToMuMuPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu9_IP4[BToMuMuPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu9_IP5[BToMuMuPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu9_IP6[BToMuMuPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu10p5_IP3p5[BToMuMuPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu12_IP6[BToMuMuPi_trg_mu_idx]==1 ) && "
 	
-	trg_BPark_ele =  " Muon_isTriggeringBPark[BToMuEPi_trg_mu_idx]==1 && "
+	trg_BPark_ele =  " Muon_isTriggeringBPark[BToMuEPi_trg_mu_idx]==1 &&"#  Muon_fired_HLT_Mu12_IP6[BToMuEPi_trg_mu_idx]==1 &&"
 # || Muon_fired_HLT_Mu8_IP3[BToMuEPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu8_IP5[BToMuEPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu8_IP6[BToMuEPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu8p5_IP3p5[BToMuEPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu9_IP4[BToMuEPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu9_IP5[BToMuEPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu9_IP6[BToMuEPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu10p5_IP3p5[BToMuEPi_trg_mu_idx]==1 || Muon_fired_HLT_Mu12_IP6[BToMuEPi_trg_mu_idx]==1 ) "
 	
 	trg_BPark_trk = "(Muon_fired_HLT_Mu7_IP4[BToMuEPiHD_trg_mu_idx]==1 || Muon_fired_HLT_Mu8_IP3[BToMuEPiHD_trg_mu_idx]==1 || Muon_fired_HLT_Mu8_IP5[BToMuEPiHD_trg_mu_idx]==1 || Muon_fired_HLT_Mu8_IP6[BToMuEPiHD_trg_mu_idx]==1 || Muon_fired_HLT_Mu8p5_IP3p5[BToMuEPiHD_trg_mu_idx]==1 || Muon_fired_HLT_Mu9_IP4[BToMuEPiHD_trg_mu_idx]==1 || Muon_fired_HLT_Mu9_IP5[BToMuEPiHD_trg_mu_idx]==1 || Muon_fired_HLT_Mu9_IP6[BToMuEPiHD_trg_mu_idx]==1 || Muon_fired_HLT_Mu10p5_IP3p5[BToMuEPiHD_trg_mu_idx]==1 || Muon_fired_HLT_Mu12_IP6[BToMuEPiHD_trg_mu_idx]==1 ) && "
@@ -403,8 +473,8 @@ if __name__ == '__main__':
  		&& fabs(BToMuMuPi_pi_dxyS)>3 \
  		&& fabs(BToMuMuPi_pi_DCASig)>5" 
 	mu_sel= mu_sel.replace("	","")
- 		#&& Electron_pfmvaId[BToMuEPi_sel_ele_idx]>-3\
  	pf_sel = "Muon_pt[BToMuEPi_trg_mu_idx]>7\
+ 		&& Electron_pfmvaId[BToMuEPi_sel_ele_idx]>-3\
 		&& fabs(Muon_eta[BToMuEPi_trg_mu_idx])<1.5\
  		&& (( BToMuEPi_hnl_to_trgmu==0  && Muon_softId[BToMuEPi_trg_mu_idx]==1\
 					       && fabs(Electron_dz[BToMuEPi_sel_ele_idx])>0.0015\
@@ -422,14 +492,13 @@ if __name__ == '__main__':
  		&& fabs(Electron_eta[BToMuEPi_sel_ele_idx])<2 \
  		&& BToMuEPi_pi_pt>0.7 \
  		&& fabs(BToMuEPi_pi_eta)<2 \
- 		&& BToMuEPi_sv_prob>0.0001 \
- 		&& BToMuEPi_hnl_cos2D>0.99\
- 		&& fabs(BToMuEPi_sv_lxy/BToMuEPi_sv_lxye)>20 \
+ 		&& BToMuEPi_sv_prob>0.01 \
+ 		&& BToMuEPi_hnl_cos2D>0.995\
+ 		&& fabs(BToMuEPi_sv_lxy/BToMuEPi_sv_lxye)>15 \
  		&& fabs(BToMuEPi_pi_dz)>0.005 \
  		&& fabs(BToMuEPi_pi_dxy)>0.005\
  		&& fabs(BToMuEPi_pi_dzS)>1.5 \
- 		&& fabs(BToMuEPi_pi_dxyS)>3 \
- 		&& fabs(BToMuEPi_pi_DCASig)>5" 
+ 		&& fabs(BToMuEPi_pi_DCASig_corr)>5" 
 	pf_sel= pf_sel.replace("	","")
 #	mu_sel = " Muon_pt[BToMuMuPi_trg_mu_idx]>7   && fabs(Muon_eta[BToMuMuPi_trg_mu_idx])<1.5 && Muon_looseId[BToMuMuPi_sel_mu_idx]==1 && Muon_pt[BToMuMuPi_sel_mu_idx]>1.5 &&  fabs(Muon_eta[BToMuMuPi_sel_mu_idx])<2 &&  BToMuMuPi_pi_pt>0.7  &&  fabs(BToMuMuPi_pi_eta)<2 && BToMuMuPi_sv_prob>0.001  &&  BToMuMuPi_hnl_cos2D>0.99 &&  fabs(BToMuMuPi_sv_lxy/BToMuMuPi_sv_lxye)>20 &&  fabs(BToMuMuPi_pi_dz)>0.005  &&  fabs(BToMuMuPi_pi_dxy)>0.005  && fabs(BToMuMuPi_pi_dzS)>1.5 && fabs(BToMuMuPi_pi_dxyS)>3 &&  fabs(BToMuMuPi_pi_DCASig)>5  "
 	#mu_perCat_sel= " && BToMuMuPi_hnl_charge==0 && ((fabs(BToMuMuPi_sv_lxy)<1 && ProbeTracks_pt[BToMuMuPi_pi_idx]>1.1 &&  fabs(BToMuMuPi_sv_lxy/BToMuMuPi_sv_lxye)>30 && fabs(Muon_dxyS[BToMuMuPi_sel_mu_idx])>5 &&  fabs(ProbeTracks_dxyS[BToMuMuPi_pi_idx])>10  ) ||  (fabs(BToMuMuPi_sv_lxy)>1  && fabs(BToMuMuPi_sv_lxy)<5 && ProbeTracks_pt[BToMuMuPi_pi_idx]>1.2 &&  fabs(BToMuMuPi_sv_lxy/BToMuMuPi_sv_lxye)>100 && fabs(Muon_dxyS[BToMuMuPi_sel_mu_idx])>12 &&  fabs(ProbeTracks_dxyS[BToMuMuPi_pi_idx])>25  ) || (fabs(BToMuMuPi_sv_lxy)>5 && ProbeTracks_pt[BToMuMuPi_pi_idx]>1.3 &&  fabs(BToMuMuPi_sv_lxy/BToMuMuPi_sv_lxye)>100 && fabs(Muon_dxyS[BToMuMuPi_sel_mu_idx])>15 &&  fabs(ProbeTracks_dxyS[BToMuMuPi_pi_idx])>20  ))"
@@ -488,7 +557,6 @@ if __name__ == '__main__':
 	lep_match = "(BToMuEPi_matching_sel_lep_genIdx !=-1)"	
 	pi_match = "(BToMuEPi_matching_pi_genIdx !=-1)"
 	
-	GenMatch = " && "+trgMu_match+" && "+lep_match+" && "+pi_match
 	noGenMatch = " && !"+trgMu_match+" && !"+lep_match+" && !"+pi_match
  	only_trgMuMatch = ""+trgMu_match+" && !"+lep_match+" && !"+pi_match+" && " 	
  	only_eleMatch = "&& !"+trgMu_match+" && "+lep_match+" && !"+pi_match 	
@@ -508,8 +576,8 @@ if __name__ == '__main__':
 	#"GenPart_pdgId[BToMuEPi_matching_trg_mu_genIdx]","GenPart_pdgId[BToMuEPi_matching_sel_lep_genIdx]","GenPart_pdgId[BToMuEPi_matching_pi_genIdx]",
 	rta = []
 	singleB_mu = []
-	rta.append(root2array(inputFiles,"Events",branches= mu_branches,object_selection={mu_sig+trg_BPark_mu+mu_sel:mu_branches}))
-#	rta.append(root2array(inputFiles,"Events",branches= ele_branches,object_selection={pf_sig+trg_BPark_ele+pf_sel:ele_branches}))
+	#rta.append(root2array(inputFiles,"Events",branches= mu_branches,object_selection={mu_sig+trg_BPark_mu+mu_sel:mu_branches}))
+	rta.append(root2array(inputFiles,"Events",branches= ele_branches,object_selection={pf_sig+trg_BPark_ele+pf_sel:ele_branches}))
 	#rta.append(root2array(inputFiles,"Events",branches= ele_branches+["GenPart_pdgId[BToMuEPi_matching_trg_mu_genIdx]"],object_selection={only_trgMuMatch+pf_sig+trg_BPark_ele+pf_sel:ele_branches+["GenPart_pdgId[BToMuEPi_matching_trg_mu_genIdx]"]}))
 	#rta.append(root2array(inputFiles,"Events",branches= ele_branches,object_selection={pf_sig+trg_BPark_ele+pf_sel+only_eleMatch:ele_branches+["GenPart_pdgId[BToMuEPi_matching_sel_lep_genIdx]"]}))
 	#rta.append(root2array(inputFiles,"Events",branches= ele_branches,object_selection={pf_sig+trg_BPark_ele+pf_sel+only_piMatch:ele_branches+["GenPart_pdgId[BToMuEPi_matching_pi_genIdx]"]}))
@@ -533,38 +601,6 @@ if __name__ == '__main__':
 	rfileSel = root_open(sys.argv[2], 'w')
 	treeSel = Tree("Events", model=Event)
 	dphi_cut = [0.03,0.08,0.15,0.2]
-	#reader = ROOT.TMVA.Reader( )
-	#
-	#B_pt = array.array('f',[0])
-	#minPt = array.array('f',[0])
-	#maxPt = array.array('f',[0])
-	#vtxProb = array.array('f',[0])
-	#MaxDxyS = array.array('f',[0])
-	#hnl_l_dxyS = array.array('f',[0])
-	#hnl_l_dxy = array.array('f',[0])
-	#hnl_l_dz = array.array('f',[0])
-	#hnl_pi_dxy = array.array('f',[0])
-	#dilepton_mass = array.array('f',[0])
-	#hnl_cos2D = array.array('f',[0])
-	#hnl_l_mvaId = array.array('f',[0])
-	#hnl
-#Mass = array.array('f',[0])
-	#hnlLxy = array.array('f',[0])
-	#reader.AddVariable( "B_pt",B_pt );
-	#reader.AddVariable( "min(hnl_l_pt,hnl_pi_pt)",minPt );
-	#reader.AddVariable( "max(hnl_l_pt,hnl_pi_pt)",maxPt );
-	#reader.AddVariable( "hnl_vtxProb", vtxProb);
-	#reader.AddVariable( "max(abs(hnl_l_dxyS),abs(hnl_pi_dxyS))", MaxDxyS );
-	#reader.AddVariable( "abs(hnl_l_dxyS)", hnl_l_dxyS );
-	#reader.AddVariable( "abs(hnl_l_dxy)", hnl_l_dxy );
-	#reader.AddVariable( "abs(hnl_l_dz)", hnl_l_dz );
-	#reader.AddVariable( "abs(hnl_pi_dxy)", hnl_pi_dxy );
-	#reader.AddVariable( "dilepton_mass", dilepton_mass );
-	#reader.AddVariable( "hnl_cos2D", hnl_cos2D );
-	#reader.AddVariable( "hnl_l_mvaId", hnl_l_mvaId );
-	#reader.AddSpectator( "hnl_mass", hnlMass );
-	#reader.AddSpectator("abs(hnl_lxy)", hnlLxy );
-	#reader.BookMVA("BDT method","../macros/dataset/weights//MultipleSignal_BDT.xml")
 	entries = np.arange(0,len(rta[0]))
 
 	#pile up weight input 
@@ -573,7 +609,7 @@ if __name__ == '__main__':
 	PU_histo = histFile.Get("hist_weight")
 
 	#Mu trg SF input 
-	hFile= ROOT.TFile.Open("../data/trgMu_scale_factors_D1.root")
+	hFile= ROOT.TFile.Open("../data/trgMu_scale_factors.root")
 
 	trgMu_histo = hFile.Get("hist_scale_factor")
 
@@ -583,6 +619,10 @@ if __name__ == '__main__':
 	softMu_histo = muIdFile.Get("NUM_SoftID_DEN_genTracks_pt_abseta") #soft muId applied on if muon from B vtx
 	looseMu_histo = muIdFile.Get("NUM_LooseID_DEN_genTracks_pt_abseta") #loose muID applied if muon from HNL vtx
 
+	BToMuMuPi = False
+	BToMuEPi = True
+
+	#print ele_branches.index('Electron_charge[BToMuEPi_sel_ele_idx]')
 
 	# pNN score
 #	paths =  glob.glob("model/trainNN_*_21Sep2022_17h50m22s/")
@@ -678,53 +718,55 @@ if __name__ == '__main__':
 	        treeSel.evtIdx =entry 
 	        treeSel.nCand=1
 	        treeSel.Type=0
- 	        treeSel.LepQProd= rta[SigIdx][entry][41][0]*rta[SigIdx][entry][42][0]                                                       
-                treeSel.B_eta= rta[SigIdx][entry][2][0]                                                       
-                treeSel.B_phi= rta[SigIdx][entry][3][0]                                                       
-                treeSel.TrgMu_pt= rta[SigIdx][entry][4][0]                                                    
-                treeSel.TrgMu_eta= rta[SigIdx][entry][5][0]                                                   
-                treeSel.TrgMu_phi= rta[SigIdx][entry][6][0]                                                   
-		if (isMC ==0 and isQCD==0):
-			treeSel.PU_weight = 1 
-	               	treeSel.Trg_weight = 1
-		else: 
-			treeSel.PU_weight = PU_histo.GetBinContent(PU_histo.GetXaxis().FindBin(treeSel.PV_npvs)) 
-	               	treeSel.Trg_weight = trgMu_histo.GetBinContent(trgMu_histo.GetXaxis().FindBin(treeSel.TrgMu_pt),trgMu_histo.GetYaxis().FindBin(abs(rta[SigIdx][entry][58][0])))
-                treeSel.dr_trgMu_lep= dR(rta[SigIdx][entry][6][0],rta[SigIdx][entry][24][0],rta[SigIdx][entry][5][0],rta[SigIdx][entry][23][0])                       
- 	        treeSel.dz_trgMu_lep=  rta[SigIdx][entry][51][0]            
- 	        treeSel.hnl_mass= rta[SigIdx][entry][7][0]                                                    
- 	        treeSel.hnl_pt= rta[SigIdx][entry][8][0]      
-  	        treeSel.hnl_eta= rta[SigIdx][entry][43][0]      
-  	        treeSel.hnl_phi= rta[SigIdx][entry][44][0]      
-  	        treeSel.hnl_charge = rta[SigIdx][entry][40][0]                                         
-  	        treeSel.hnl_lxy= rta[SigIdx][entry][9][0]                                                     
-  	        treeSel.hnl_ct= rta[SigIdx][entry][55][0]*10                                                     
-  	        treeSel.hnl_to_trgmu= rta[SigIdx][entry][61][0]                                                     
-  	        treeSel.hnl_cos2D= rta[SigIdx][entry][10][0]                                                  
-  	        treeSel.hnl_lxy_sig = rta[SigIdx][entry][11][0]                                               
-  	        treeSel.hnl_drLepPi = rta[SigIdx][entry][12][0]                                               
-  	        treeSel.dr_trgmu_hnl = rta[SigIdx][entry][13][0]                                              
-  	        treeSel.hnl_vtxProb= rta[SigIdx][entry][14][0]                                                
-  	        treeSel.hnl_vtxChi2= rta[SigIdx][entry][15][0]                                                
-  	        treeSel.hnl_vx =  rta[SigIdx][entry][16][0]                                                   
-  	        treeSel.hnl_ex =  rta[SigIdx][entry][17][0]                                                   
-  	        treeSel.hnl_vy =  rta[SigIdx][entry][18][0]                                                   
-  	        treeSel.hnl_ey =  rta[SigIdx][entry][19][0]                                                   
-  	        treeSel.hnl_vz = rta[SigIdx][entry][20][0]                                                    
-  	        treeSel.hnl_ez = rta[SigIdx][entry][21][0]                                                    
-  	        treeSel.hnl_l_pt = rta[SigIdx][entry][22][0]                                                  
-  	        treeSel.hnl_l_eta =rta[SigIdx][entry][23][0]                                                  
-  	        treeSel.hnl_l_phi =rta[SigIdx][entry][24][0]                                                  
-  	        treeSel.hnl_l_dz = rta[SigIdx][entry][25][0]   
+ 	        treeSel.LepQProd= rta[SigIdx][entry][ele_branches.index('Electron_charge[BToMuEPi_sel_ele_idx]')][0]*rta[SigIdx][entry]['Muon_charge[BToMuEPi_trg_mu_idx]'][0]                                                       
+                treeSel.B_eta= rta[SigIdx][entry][ele_branches.index('BToMuEPi_eta')][0]                                                       
+                treeSel.B_phi= rta[SigIdx][entry][ele_branches.index('BToMuEPi_phi')][0]
+           #     treeSel.is_Bu=-1# rta[SigIdx][entry][ele_branches.index('BToMuEPi_isBu')][0]
+            #    treeSel.is_Bd=-1# rta[SigIdx][entry][ele_branches.index('BToMuEPi_isBd')][0]
+             #   treeSel.is_Bs=-1# rta[SigIdx][entry][ele_branches.index('BToMuEPi_isBs')][0]
+                treeSel.is_Bu= rta[SigIdx][entry][ele_branches.index('BToMuEPi_isBu')][0]
+                treeSel.is_Bd= rta[SigIdx][entry][ele_branches.index('BToMuEPi_isBd')][0]
+                treeSel.is_Bs= rta[SigIdx][entry][ele_branches.index('BToMuEPi_isBs')][0]
+		treeSel.TrgMu_pt= rta[SigIdx][entry][ele_branches.index('Muon_pt[BToMuEPi_trg_mu_idx]')][0]
+		treeSel.TrgMu_eta= rta[SigIdx][entry][ele_branches.index('Muon_eta[BToMuEPi_trg_mu_idx]')][0]
+		treeSel.TrgMu_phi= rta[SigIdx][entry][ele_branches.index('Muon_phi[BToMuEPi_trg_mu_idx]')][0]
+		treeSel.TrgMu_relIso= rta[SigIdx][entry][ele_branches.index('Muon_pfiso03Rel_all[BToMuEPi_trg_mu_idx]')][0]
+		treeSel.TrgMu_PixelHits= rta[SigIdx][entry][ele_branches.index('Muon_numberOfValidPixelHits[BToMuEPi_trg_mu_idx]')][0]
+		treeSel.TrgMu_PixelLayers= rta[SigIdx][entry][ele_branches.index('Muon_numberOfPixelLayers[BToMuEPi_trg_mu_idx]')][0]
+		treeSel.TrgMu_TrackerLayers= rta[SigIdx][entry][ele_branches.index('Muon_numberOfTrackerLayers[BToMuEPi_trg_mu_idx]')][0]
+		treeSel.hnl_mass= rta[SigIdx][entry][ele_branches.index('BToMuEPi_hnl_mass')][0]                                              
+ 	        treeSel.hnl_pt= rta[SigIdx][entry][ele_branches.index('BToMuEPi_hnl_pt')][0]      
+  	        treeSel.hnl_eta= rta[SigIdx][entry][ele_branches.index('BToMuEPi_hnl_eta')][0]      
+  	        treeSel.hnl_phi= rta[SigIdx][entry][ele_branches.index('BToMuEPi_hnl_phi')][0]      
+  	        treeSel.hnl_charge = rta[SigIdx][entry][ele_branches.index('BToMuEPi_hnl_charge')][0]                                         
+  	        treeSel.hnl_lxy= rta[SigIdx][entry][ele_branches.index('BToMuEPi_sv_lxy')][0]
+		treeSel.hnl_ct= rta[SigIdx][entry][ele_branches.index('BToMuEPi_hnl_ct')][0]*10
+		treeSel.hnl_to_trgmu= rta[SigIdx][entry][ele_branches.index('BToMuEPi_hnl_to_trgmu')][0]
+		treeSel.hnl_cos2D= rta[SigIdx][entry][ele_branches.index('BToMuEPi_hnl_cos2D')][0]
+		treeSel.hnl_lxy_sig = rta[SigIdx][entry][ele_branches.index('BToMuEPi_sv_lxy_sig')][0]                                               
+  	      #  treeSel.dr_trgmu_hnl = rta[SigIdx][entry][13][0]                                              
+  	        treeSel.hnl_vtxProb= rta[SigIdx][entry][ele_branches.index('BToMuEPi_sv_prob')][0]
+		treeSel.hnl_vtxChi2= rta[SigIdx][entry][ele_branches.index('BToMuEPi_sv_chi2')][0]
+		treeSel.hnl_vx =  rta[SigIdx][entry][ele_branches.index('BToMuEPi_sv_x')][0]                                                   
+  	        treeSel.hnl_ex =  rta[SigIdx][entry][ele_branches.index('BToMuEPi_sv_y')][0]                                                   
+  	        treeSel.hnl_vy =  rta[SigIdx][entry][ele_branches.index('BToMuEPi_sv_z')][0]                                                   
+  	        treeSel.hnl_ey =  rta[SigIdx][entry][ele_branches.index('BToMuEPi_sv_xe')][0]
+		treeSel.hnl_vz = rta[SigIdx][entry][ele_branches.index('BToMuEPi_sv_ye')][0]
+		treeSel.hnl_ez = rta[SigIdx][entry][ele_branches.index('BToMuEPi_sv_ze')][0]                                                  
+		treeSel.hnl_l_pt = rta[SigIdx][entry][ele_branches.index('Electron_pt[BToMuEPi_sel_ele_idx]')][0]                                                  
+  	        treeSel.hnl_l_eta =rta[SigIdx][entry][ele_branches.index('Electron_eta[BToMuEPi_sel_ele_idx]')][0]                                                  
+  	        treeSel.hnl_l_phi =rta[SigIdx][entry][ele_branches.index('Electron_phi[BToMuEPi_sel_ele_idx]')][0]                                                  
+  	        treeSel.hnl_l_dz = rta[SigIdx][entry][ele_branches.index('Electron_dz[BToMuEPi_sel_ele_idx]')][0]   
+  	        treeSel.hnl_l_relIso = rta[SigIdx][entry][ele_branches.index('Electron_pfRelIso[BToMuEPi_sel_ele_idx]')][0]   
   	        if (SigIdx==0 or SigIdx==1):
   	        					                                              
-  	          treeSel.hnl_l_dzS =rta[SigIdx][entry][25][0]/rta[SigIdx][entry][26][0]
+  	          treeSel.hnl_l_dzS =rta[SigIdx][entry][ele_branches.index('Electron_dz[BToMuEPi_sel_ele_idx]')][0]/rta[SigIdx][entry][ele_branches.index('Electron_dzErr[BToMuEPi_sel_ele_idx]')][0]
   	        else:                                             
   	          treeSel.hnl_l_dzS =rta[SigIdx][entry][26][0]
   	          treeSel.hnl_l_dxy =rta[SigIdx][entry][27][0]                                                  
   	        if (SigIdx==0 or SigIdx==1):
   	        					                                               
-  	          treeSel.hnl_l_dxyS =rta[SigIdx][entry][27][0]/rta[SigIdx][entry][28][0]
+  	          treeSel.hnl_l_dxyS =rta[SigIdx][entry][ele_branches.index('Electron_dxy[BToMuEPi_sel_ele_idx]')][0]/rta[SigIdx][entry][ele_branches.index('Electron_dxyErr[BToMuEPi_sel_ele_idx]')][0]
   	        else:                                            
   	          treeSel.hnl_l_dxyS =rta[SigIdx][entry][28][0]
   	        
@@ -735,22 +777,28 @@ if __name__ == '__main__':
   	
   	        if (SigIdx ==0):
 	#	 print(rta[SigIdx][entry][29][0])
-  	         treeSel.hnl_l_mvaId= rta[SigIdx][entry][29][0]    
-  	         treeSel.hnl_l_nHits= -99 
+  	         treeSel.hnl_l_mvaId= rta[SigIdx][entry][ele_branches.index('Electron_pfmvaId[BToMuEPi_sel_ele_idx]')][0]    
+  	         treeSel.hnl_l_lostHits= rta[SigIdx][entry][ele_branches.index('Electron_lostHits[BToMuEPi_sel_ele_idx]')][0] 
   	        elif (SigIdx ==1):
   	         treeSel.hnl_l_mvaId= rta[SigIdx][entry][30][0]  
   	         treeSel.hnl_l_nHits= -99 
   	         treeSel.hnl_l_nHits= rta[SigIdx][entry][30][0] 
-  	        treeSel.hnl_pi_pt =rta[SigIdx][entry][31][0]                                                  
-  	        treeSel.hnl_pi_eta= rta[SigIdx][entry][32][0]                                                 
-  	        treeSel.hnl_pi_phi = rta[SigIdx][entry][33][0]                                                
-  	        treeSel.hnl_pi_dz =rta[SigIdx][entry][34][0]                                                  
-  	        treeSel.hnl_pi_dzS = rta[SigIdx][entry][35][0]                                                
-  	        treeSel.hnl_pi_dxy= rta[SigIdx][entry][36][0]                                                 
-  	        treeSel.hnl_pi_dxyS = rta[SigIdx][entry][37][0]                                      
-  	        treeSel.hnl_pi_DCAS = rta[SigIdx][entry][38][0]                                      
-  	        treeSel.hnl_pi_nHits = rta[SigIdx][entry][48][0]                                      
-  	        treeSel.dphi_pi_fitpi = dPhi(rta[SigIdx][entry][33][0],rta[SigIdx][entry][39][0])  
+  	        treeSel.hnl_pi_pt =rta[SigIdx][entry][ele_branches.index('BToMuEPi_fit_pi_pt')][0]                                                  
+  	        treeSel.hnl_pi_eta= rta[SigIdx][entry][ele_branches.index('BToMuEPi_fit_pi_eta')][0]                                                 
+  	        treeSel.hnl_pi_phi = rta[SigIdx][entry][ele_branches.index('BToMuEPi_fit_pi_phi')][0]                                                
+  	        treeSel.hnl_pi_dz =rta[SigIdx][entry][ele_branches.index('BToMuEPi_pi_dz')][0]                                                  
+  	        treeSel.hnl_pi_dzS = rta[SigIdx][entry][ele_branches.index('BToMuEPi_pi_dzS')][0]                                                
+  	        treeSel.hnl_pi_dxy= rta[SigIdx][entry][ele_branches.index('BToMuEPi_pi_dxy')][0]                                                 
+  	        treeSel.hnl_pi_dxyS = rta[SigIdx][entry][ele_branches.index('BToMuEPi_pi_dxyS')][0]                                      
+  	        treeSel.hnl_pi_DCAS = rta[SigIdx][entry][ele_branches.index('BToMuEPi_pi_DCASig_corr')][0]                                      
+  	       # treeSel.hnl_pi_DCAS = rta[SigIdx][entry][ele_branches.index('BToMuEPi_pi_DCASig')][0]                                      
+  	        treeSel.hnl_pi_PixelHits = rta[SigIdx][entry][ele_branches.index('BToMuEPi_pi_numberOfValidPixelHits')][0]                                      
+  	        treeSel.hnl_pi_PixelLayers = rta[SigIdx][entry][ele_branches.index('BToMuEPi_pi_numberOfPixelLayers')][0]                                      
+  	        treeSel.hnl_pi_TrackerLayers = rta[SigIdx][entry][ele_branches.index('BToMuEPi_pi_numberOfTrackerLayers')][0]                                      
+  	       # treeSel.dphi_pi_fitpi = dPhi(rta[SigIdx][entry][33][0],rta[SigIdx][entry][39][0])  
+                treeSel.dr_trgMu_lep= dR(treeSel.TrgMu_phi,treeSel.hnl_l_phi,treeSel.TrgMu_eta,treeSel.hnl_l_eta)                       
+                treeSel.dr_trgMu_pi= dR(treeSel.TrgMu_phi,treeSel.hnl_pi_phi,treeSel.TrgMu_eta,treeSel.hnl_pi_eta)                       
+ 	        treeSel.dz_trgMu_lep=  rta[SigIdx][entry][ele_branches.index("Electron_dzTrg[BToMuEPi_sel_ele_idx]")][0]            
   	   #    treeSel.genMatch_muTrg = rta[SigIdx][entry][63][0]
   	   #    treeSel.genMatch_l = rta[SigIdx][entry][64][0]
   	   #    treeSel.genMatch_pi = rta[SigIdx][entry][65][0]
@@ -787,7 +835,7 @@ if __name__ == '__main__':
   	#		cat = 7			
   	#	treeSel.genMatch_cat = cat
   	   #     treeSel.cosTheta_star = rta[SigIdx][entry][48][0]                                      
-  		treeSel.bdt = -99 
+  	#	treeSel.bdt = -99 
   		#print(B_mass)
   	        if SigIdx ==-1:
   			
@@ -795,7 +843,7 @@ if __name__ == '__main__':
   			treeSel.B_mass= rta[SigIdx][entry][0][0]                                                      
   			treeSel.dilepton_mass = rta[SigIdx][entry][45][0]                                      
   			treeSel.dilepton_pt = rta[SigIdx][entry][46][0]    
-  		#	treeSel.dilepton_mass = TwoBodyMass(SigIdx,treeSel.hnl_l_pt,treeSel.hnl_l_eta,treeSel.hnl_l_phi,mass[SigIdx],treeSel.TrgMu_pt,treeSel.TrgMu_eta,treeSel.TrgMu_phi,MUON_MASS)                                  
+  			treeSel.dilepton_mass = TwoBodyMass(SigIdx,treeSel.hnl_l_pt,treeSel.hnl_l_eta,treeSel.hnl_l_phi,mass[SigIdx],treeSel.TrgMu_pt,treeSel.TrgMu_eta,treeSel.TrgMu_phi,MUON_MASS)                                  
   		#	treeSel.dilepton_pt = TwoBodyPt(SigIdx,treeSel.hnl_l_pt,treeSel.hnl_l_eta,treeSel.hnl_l_phi,mass[SigIdx],treeSel.TrgMu_pt,treeSel.TrgMu_eta,treeSel.TrgMu_phi,MUON_MASS)    
   			treeSel.likelihood =  -99
   			treeSel.toEle = -1                 
@@ -806,15 +854,15 @@ if __name__ == '__main__':
 
 			#define vector 
 				
-  			treeSel.B_pt= rta[SigIdx][entry][1][0]                                                        
-  			treeSel.B_mass= rta[SigIdx][entry][0][0]                                                      
-  			treeSel.toMu =  -1                 
+  		#	treeSel.B_pt= rta[SigIdx][entry][1][0]                                                        
+  		#	treeSel.B_mass= rta[SigIdx][entry][0][0]                                                      
+  			#treeSel.toMu =  -1                 
 			
 			
   			treeSel.B_pt= rta[SigIdx][entry][1][0]                                                        
   			treeSel.B_mass= rta[SigIdx][entry][0][0]                                                      
-  			treeSel.dilepton_mass = rta[SigIdx][entry][45][0]                                      
-  			treeSel.dilepton_pt = rta[SigIdx][entry][46][0]  
+  			treeSel.dilepton_mass = rta[SigIdx][entry][ele_branches.index("BToMuEPi_dilepton_mass")][0]                                      
+  			treeSel.dilepton_pt = rta[SigIdx][entry][ele_branches.index("BToMuEPi_dilepton_pt")][0]  
 			 
   			treeSel.dilepton_mass = TwoBodyMass(SigIdx,treeSel.hnl_l_pt,treeSel.hnl_l_eta,treeSel.hnl_l_phi,mass[SigIdx],treeSel.TrgMu_pt,treeSel.TrgMu_eta,treeSel.TrgMu_phi,MUON_MASS)                                  
 	  		
@@ -822,29 +870,40 @@ if __name__ == '__main__':
   			treeSel.BlepPi_pt = TwoBodyPt(SigIdx,treeSel.hnl_l_pt,treeSel.hnl_l_eta,treeSel.hnl_l_phi,mass[SigIdx],treeSel.TrgMu_pt,treeSel.TrgMu_eta,treeSel.TrgMu_phi,MUON_MASS)    
 			
 			if (treeSel.hnl_to_trgmu==0): 
-				
-  	          		treeSel.hnl_l_dzS =rta[SigIdx][entry][25][0]/rta[SigIdx][entry][26][0]
-  	          		treeSel.hnl_l_dz =rta[SigIdx][entry][25][0]
-  	          		treeSel.hnl_l_dxyS =rta[SigIdx][entry][27][0]/rta[SigIdx][entry][28][0]
-  	          		treeSel.hnl_l_dxy =rta[SigIdx][entry][27][0]
+				treeSel.l0_pt = treeSel.TrgMu_pt	
+				treeSel.l0_relIso = treeSel.TrgMu_relIso	
+				treeSel.l_pt = treeSel.hnl_l_pt	
+				treeSel.l_relIso = treeSel.hnl_l_relIso	
+  	         # 		treeSel.hnl_l_dzS  
+  	          #		treeSel.hnl_l_dz =rta[SigIdx][entry][25][0]
+  	          #		treeSel.hnl_l_dxyS =rta[SigIdx][entry][27][0]/rta[SigIdx][entry][28][0]
+  	          #		treeSel.hnl_l_dxy =rta[SigIdx][entry][27][0]
   	          		treeSel.muId_weight = softMu_histo.GetBinContent(softMu_histo.GetXaxis().FindBin(treeSel.TrgMu_pt),softMu_histo.GetYaxis().FindBin(abs(treeSel.TrgMu_eta)))
 	  			point_l  = np.array( [np.float(treeSel.hnl_cos2D),np.float(abs(treeSel.hnl_lxy_sig)),np.float(treeSel.hnl_vtxProb),np.float(treeSel.hnl_pi_pt)])
   				treeSel.BlepPi_mass = TwoBodyMass(SigIdx,treeSel.hnl_pi_pt,treeSel.hnl_pi_eta,treeSel.hnl_pi_phi,mass[SigIdx],treeSel.TrgMu_pt,treeSel.TrgMu_eta,treeSel.TrgMu_phi,MUON_MASS)                                  
+  	        		treeSel.hnl_drLepPi = dR(treeSel.hnl_pi_phi,treeSel.hnl_l_phi,treeSel.hnl_pi_eta,treeSel.hnl_l_eta)                                            
+				treeSel.MuLPi_mass = TwoBodyMass(SigIdx,treeSel.hnl_pt,treeSel.hnl_eta,treeSel.hnl_phi,treeSel.hnl_mass,treeSel.TrgMu_pt,treeSel.TrgMu_eta,treeSel.TrgMu_phi,MUON_MASS)                                  
   				treeSel.BlepPi_pt = TwoBodyPt(SigIdx,treeSel.hnl_pi_pt,treeSel.hnl_pi_eta,treeSel.hnl_pi_phi,mass[SigIdx],treeSel.TrgMu_pt,treeSel.TrgMu_eta,treeSel.TrgMu_phi,MUON_MASS)   
  	        		treeSel.dr_Blep_pi= dR(treeSel.hnl_pi_phi,treeSel.TrgMu_phi,treeSel.hnl_pi_eta,treeSel.TrgMu_eta)  #primary lepton is muon
 				 
 			elif (treeSel.hnl_to_trgmu==1): 
-  	          		treeSel.hnl_l_dzS =rta[SigIdx][entry][57][0]
-  	          		treeSel.hnl_l_dz =rta[SigIdx][entry][55][0]
-  	          		treeSel.hnl_l_dxyS =rta[SigIdx][entry][58][0]
-  	          		treeSel.hnl_l_dxy =rta[SigIdx][entry][56][0]
+				treeSel.l0_pt = treeSel.hnl_l_pt	
+				treeSel.l0_relIso = treeSel.hnl_l_relIso	
+				treeSel.l_pt = treeSel.TrgMu_pt	
+				treeSel.l_relIso = treeSel.TrgMu_relIso	
+  	          		treeSel.hnl_l_dzS =rta[SigIdx][entry][ele_branches.index('Muon_dzS[BToMuEPi_trg_mu_idx]')][0]
+  	          		treeSel.hnl_l_dz =rta[SigIdx][entry][ele_branches.index('Muon_dz[BToMuEPi_trg_mu_idx]')][0]
+  	          		treeSel.hnl_l_dxyS =rta[SigIdx][entry][ele_branches.index('Muon_dxyS[BToMuEPi_trg_mu_idx]')][0]
+  	          		treeSel.hnl_l_dxy =rta[SigIdx][entry][ele_branches.index('Muon_dxyS[BToMuEPi_trg_mu_idx]')][0]
   	          		treeSel.muId_weight = looseMu_histo.GetBinContent(looseMu_histo.GetXaxis().FindBin(treeSel.TrgMu_pt),looseMu_histo.GetYaxis().FindBin(abs(treeSel.TrgMu_eta)))
 	  			point_l  = np.array( [np.float(treeSel.hnl_cos2D),np.float(abs(treeSel.hnl_lxy_sig)),np.float(treeSel.hnl_vtxProb),np.float(treeSel.hnl_pi_pt)])
   				treeSel.BlepPi_mass = TwoBodyMass(SigIdx,treeSel.hnl_pi_pt,treeSel.hnl_pi_eta,treeSel.hnl_pi_phi,mass[SigIdx],treeSel.hnl_l_pt,treeSel.hnl_l_eta,treeSel.hnl_l_phi,ELECTRON_MASS)                                  
   				treeSel.BlepPi_pt = TwoBodyPt(SigIdx,treeSel.hnl_pi_pt,treeSel.hnl_pi_eta,treeSel.hnl_pi_phi,mass[SigIdx],treeSel.hnl_l_pt,treeSel.hnl_l_eta,treeSel.hnl_l_phi,ELECTRON_MASS)    
+  				treeSel.MuLPi_mass = TwoBodyMass(SigIdx,treeSel.hnl_pt,treeSel.hnl_eta,treeSel.hnl_phi,treeSel.hnl_mass,treeSel.hnl_l_pt,treeSel.hnl_l_eta,treeSel.hnl_l_phi,MUON_MASS)                                  
  	        		treeSel.dr_Blep_pi= dR(treeSel.hnl_pi_phi,treeSel.hnl_l_phi,treeSel.hnl_pi_eta,treeSel.hnl_l_eta) #primary lepton is electron
+  	        		treeSel.hnl_drLepPi = dR(treeSel.hnl_pi_phi,treeSel.TrgMu_phi,treeSel.hnl_pi_eta,treeSel.TrgMu_eta)                                            
 	  			#point  = np.array( [np.float(treeSel.hnl_cos2D),np.float(max(np.abs(treeSel.hnl_l_dxyS),np.abs(treeSel.hnl_pi_dxyS))),np.float(treeSel.hnl_vtxProb),np.float(treeSel.hnl_pi_pt)])
-  			likelihood = ROOT.BinnedLikelihood(SigIdx+1,int(sys.argv[3]),int(sys.argv[4]),point_l)
+  			likelihood =1# ROOT.BinnedLikelihood(SigIdx+1,int(sys.argv[3]),int(sys.argv[4]),point_l)
   			treeSel.likelihood =  likelihood if not math.isnan(likelihood ) else -99                           
   			treeSel.toEle = -1                 
   			treeSel.toMu =  -1          
@@ -863,14 +922,27 @@ if __name__ == '__main__':
   			B_pt = TwoBodyPt(SigIdx,treeSel.hnl_pt,treeSel.hnl_eta,treeSel.hnl_phi,mass_hnl,treeSel.TrgMu_pt,treeSel.TrgMu_eta,treeSel.TrgMu_phi,MUON_MASS)                         
   	        	treeSel.B_pt= B_pt                                                   
   	        	treeSel.B_mass= B_mass                                                  
-  			treeSel.dilepton_mass = TwoBodyMass(SigIdx,treeSel.hnl_l_pt,treeSel.hnl_l_eta,treeSel.hnl_l_phi,mass[SigIdx],treeSel.TrgMu_pt,treeSel.TrgMu_eta,treeSel.TrgMu_phi,MUON_MASS)                                      
   	       		treeSel.dilepton_pt = TwoBodyPt(SigIdx,treeSel.hnl_l_pt,treeSel.hnl_l_eta,treeSel.hnl_l_phi,mass[SigIdx],treeSel.TrgMu_pt,treeSel.TrgMu_eta,treeSel.TrgMu_phi,MUON_MASS)    
   			                                 
   			point  = np.array( [np.float(treeSel.hnl_cos2D),np.float(max(abs(treeSel.hnl_l_dzS),abs(treeSel.hnl_pi_dzS))),np.float(max(abs(treeSel.hnl_l_dxyS),abs(treeSel.hnl_pi_dxyS))),np.float(min(treeSel.hnl_l_nHits,treeSel.hnl_pi_nHits)),np.float(treeSel.hnl_vtxProb)])
-  			likelihood = ROOT.BinnedLikelihood(SigIdx,int(sys.argv[3]),int(sys.argv[4]),point)
+  			likelihood =1# ROOT.BinnedLikelihood(SigIdx,int(sys.argv[3]),int(sys.argv[4]),point)
   			treeSel.likelihood =  likelihood if not math.isnan(likelihood ) else -99   
   			treeSel.toEle =-1# rta[SigIdx][entry][52][0]                        
   			treeSel.toMu = -1# rta[SigIdx][entry][53][0]                       
+		if (isMC ==0 and isQCD==0):
+			treeSel.PU_weight = 1 
+	               	treeSel.Trg_weight = 1
+		else: 
+			treeSel.PU_weight = PU_histo.GetBinContent(PU_histo.GetXaxis().FindBin(treeSel.PV_npvs)) 
+#	               	treeSel.Trg_weight = trgMu_histo.GetBinContent(trgMu_histo.GetXaxis().FindBin(treeSel.TrgMu_pt),trgMu_histo.GetYaxis().FindBin(abs(rta[SigIdx][entry][58][0])))
+	               	if (BToMuEPi):
+				treeSel.Trg_weight = trgMu_histo.GetBinContent(trgMu_histo.GetXaxis().FindBin(treeSel.TrgMu_pt),trgMu_histo.GetYaxis().FindBin(abs(rta[SigIdx][entry][59][0])))
+	               	elif  (BToMuMuPi):
+				if (treeSel.hnl_to_trgmu):
+					treeSel.Trg_weight = MuMu_weight(rta[SigIdx][entry][65][0],treeSel.hnl_l_pt,treeSel.hnl_l_dxyS,rta[SigIdx][entry][61][0],treeSel.TrgMu_pt,abs(rta[SigIdx][entry][59][0]))
+				else:
+					treeSel.Trg_weight = MuMu_weight(rta[SigIdx][entry][61][0],treeSel.TrgMu_pt,abs(rta[SigIdx][entry][59][0]),rta[SigIdx][entry][65][0],treeSel.hnl_l_pt,abs(treeSel.hnl_l_dxyS))
+			 
 	        treeSel.fill()
 		if (do_orthogonal):
 			break
