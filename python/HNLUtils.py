@@ -15,17 +15,36 @@ const_hbar = 6.582119569e-22 * 1e-03 # GeV s  # from http://pdg.lbl.gov/2020/rev
 const_c = 299792458. # m / s                  # from http://pdg.lbl.gov/2020/reviews/rpp2020-rev-phys-constants.pdf
 
 
-def BToMuX(mass=-99,vv =1):
+def BToMuX(mass=-99,vv =1, B_flav=''):
 
     dec    = Decays(mass=mass, mixing_angle_square=vv)
     br = dec.BR_tot_mu
+    if 'Bu' in B_flav :
+    	br = dec.BR_B_mu
+    elif 'Bd' in B_flav :
+    	br = dec.BR_B0_mu
+    elif 'Bs' in B_flav :
+    	br = dec.BR_Bs_mu
+    elif 'Bc' in B_flav :
+    	br = dec.BR_tot_mu_Bc
+	
     return br
 
-def BToEX(mass=-99,vv =1):
+def BToEX(mass=-99,vv =1,B_flav= ''):
 
     dec    = Decays(mass=mass, mixing_angle_square=vv)
     br = dec.BR_tot_e
+    if 'Bu' in B_flav :
+    	br = dec.BR_B_e
+    elif 'Bd' in B_flav :
+    	br = dec.BR_B0_e
+    elif 'Bs' in B_flav :
+    	br = dec.BR_Bs_e
+    elif 'Bc' in B_flav :
+    	br = dec.BR_tot_e_Bc
+
     return br
+
 def BcToMuX(mass=-99,vv =1):
 
     dec    = Decays(mass=mass, mixing_angle_square=vv)
@@ -89,24 +108,31 @@ def gamma_total(mass,vv):
     gamma_total =  HNLDecays(mass=mass,mixing_angle_square=vv).decay_rate['tot']   # GeV
     return gamma_total
 
-def gamma_partial(mass,vv):
+def gamma_partial(mass,vv,f):
     '''
     Partial width for N->mupi (Dirac)
     '''
     gamma_partial_mu = HNLDecays(mass=mass,mixing_angle_square=vv).decay_rate['mupi'] # GeV
     gamma_partial_e = HNLDecays(mass=mass,mixing_angle_square=vv).decay_rate['epi'] # GeV
-    print (gamma_partial_mu)
-    print (gamma_partial_e)
-    
-    return gamma_partial_mu
+    gamma_partial_tau = HNLDecays(mass=mass,mixing_angle_square=vv).decay_rate['taupi'] # GeV
+    print "mu",(gamma_partial_mu)
+    print "e",(gamma_partial_e)
+    print "tau",(gamma_partial_tau)
+
+    if f == 'mu':
+  	  gamma_partial =  gamma_partial_mu
+    else:
+  	  gamma_partial =  gamma_partial_e
+	
+    return gamma_partial
 
 def BR_HNLmupion(mass): # vv is irrelevant, as it cancels out in the ratio
-    print gamma_partial(mass=mass,vv=1.)#/gamma_total(mass=mass,vv=1.)
-    return gamma_partial(mass=mass,vv=1.)/gamma_total(mass=mass,vv=1.)
+    print gamma_partial(mass=mass,vv=1.,f='mu')#/gamma_total(mass=mass,vv=1.)
+    return gamma_partial(mass=mass,vv=1.,f='mu')/gamma_total(mass=mass,vv=1.)
 
 def BR_HNLelepion(mass): # vv is irrelevant, as it cancels out in the ratio
     #print gamma_partial(mass=mass,vv=1.)/gamma_total(mass=mass,vv=1.)
-    return gamma_partial(mass=mass,vv=1.)/gamma_total(mass=mass,vv=1.)
+    return gamma_partial(mass=mass,vv=1.,f='ele')/gamma_total(mass=mass,vv=1.)
 
 def getVV(mass=-99.,ctau=-99.,ismaj=True):
     '''
@@ -170,14 +196,40 @@ def sigPars(mass,cat):
     print mean, sigma
     return mean,sigma,alpha1,n1,alpha2,n2
 
-#vv = getVV(2,300,True)
-#ctau = getCtau(4.5,0.002625,True)
+def coupling_scaler(f_mu_ref, f_e_ref, f_tau_ref,f_mu,f_e,f_tau,ch,mass):
 
-#print ctau
+        vv = 1.0
+    
+	gamma_partial_mu = HNLDecays(mass=mass,mixing_angle_square=vv).decay_rate['mupi'] # GeV
+	gamma_partial_e = HNLDecays(mass=mass,mixing_angle_square=vv).decay_rate['epi'] # GeV
+	gamma_partial_tau = HNLDecays(mass=mass,mixing_angle_square=vv).decay_rate['taupi'] # GeV
+	gamma_factor =( gamma_partial_mu * f_mu_ref + gamma_partial_e * f_e_ref + gamma_partial_tau * f_tau_ref )/( gamma_partial_mu * f_mu + gamma_partial_e * f_e + gamma_partial_tau * f_tau)
+
+
+	print gamma_factor
+	if ch == 'mumu':
+		return (f_mu * gamma_factor)**2
+	if ch == 'mue':
+		return f_mu*f_e*( gamma_factor)**2
+
+
+vv = getVV(1,300,True)
+ctau = getCtau(4.5,0.001457,True)
+
+print 'ctau',ctau
 #sigPars(2.0,'lxysig0to50_SS')
+#gamma = gamma_total(2,vv)
+#print 'total gamma', gamma 
+#gamma = gamma_partial(4.5,vv,'mu')
 
-#br_mu= BR_HNLmupion(1)
-#br_e= BR_HNLmupion(1)
+f_mu = coupling_scaler(1,0,0,0.33,0.33,0.33,'mumu',4.5)
+f_e = coupling_scaler(0.5,0.5,0,0.33,0.33,0.33,'mue',4.5)
+
+
+print 'corrections',f_mu, f_e
+#br_mu= BR_HNLmupion(4.5)
+#br_e= BR_HNLelepion(4.5)
+#print br_mu, br_e
 #print("BR electrons %f,BR muons %f"%(br_e,br_mu))
 #print(BToMuX(3))
 print(BToEX(3))
